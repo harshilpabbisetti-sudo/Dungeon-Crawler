@@ -73,7 +73,7 @@ class Player(pygame.sprite.Sprite):
             self.status = self.status.split('_')[0] + '_Run'
 
     def animate(self, dt):
-        self.frame_index += 4 * dt
+        self.frame_index += 6 * dt
         if self.frame_index >= len(self.animations[self.status]):
             self.frame_index = 0
 
@@ -85,3 +85,8 @@ class Player(pygame.sprite.Sprite):
 
         self.move(dt)
         self.animate(dt)
+
+
+
+
+# draw rectangle around player
