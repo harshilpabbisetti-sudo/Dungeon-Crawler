@@ -24,7 +24,7 @@ class Level:
 		# spawn player in the center of the first room
 		if self.dungeon.rooms:
 			spawn_x, spawn_y = self.dungeon.rooms[0]['center']
-			self.player = Player((spawn_x * TILE_SIZE, spawn_y * TILE_SIZE), self.all_sprites)
+			self.player = Player((spawn_x * TILE_SIZE, spawn_y * TILE_SIZE), self.all_sprites, self.grid)
 
 	def run(self, dt):
 		self.display_surface.fill('black')

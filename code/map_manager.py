@@ -22,20 +22,23 @@ class MapManager:
 		floor_surface = pygame.Surface((full_width, full_height))
 		floor_surface.set_colorkey('black') # Make parts without floor transparent
 		
-		# 2. Create a base tile surface to blit repeatedly
+		# 2. Create base tile surfaces to blit repeatedly
 		base_tile = pygame.Surface((TILE_SIZE, TILE_SIZE))
 		base_tile.fill('gray20')
-		# Add a subtle border to see the grid (optional)
 		pygame.draw.rect(base_tile, 'gray15', (0, 0, TILE_SIZE, TILE_SIZE), 1)
 
-		# 3. Blit all floor tiles onto the huge surface
+		wall_tile = pygame.Surface((TILE_SIZE, TILE_SIZE))
+		wall_tile.fill('gray40')
+		pygame.draw.rect(wall_tile, 'gray30', (0, 0, TILE_SIZE, TILE_SIZE), 1)
+
+		# 3. Blit all tiles onto the huge surface
 		for row_index, row in enumerate(grid):
 			for col_index, cell in enumerate(row):
+				x = col_index * TILE_SIZE
+				y = row_index * TILE_SIZE
 				if cell == 0: # Floor
-					x = col_index * TILE_SIZE
-					y = row_index * TILE_SIZE
 					floor_surface.blit(base_tile, (x, y))
 
 		# 4. Create a single sprite for the entire floor
-		# We add it at (0,0) and make sure it's the first in the group so it draws under everything
+		# We add it at (0,0) and make sure it's the first in the group, so it draws under everything
 		Tile((0, 0), [self.all_sprites], floor_surface)

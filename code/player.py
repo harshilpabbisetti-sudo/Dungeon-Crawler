@@ -4,7 +4,7 @@ from support import *
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, pos, group):
+    def __init__(self, pos, group, grid):
         super().__init__(group)
 
         self.import_assets()
@@ -14,11 +14,16 @@ class Player(pygame.sprite.Sprite):
         # general setup
         self.image = self.animations[self.status][self.frame_index]
         self.rect = self.image.get_rect(center=pos)
+        self.hitbox = pygame.Rect(0, 0, 25, 50)
+        self.hitbox.center = self.rect.center
 
         # movement attributes
         self.direction = pygame.math.Vector2()
         self.pos = pygame.math.Vector2(self.rect.center)
         self.speed = 200
+
+        # collision
+        self.grid = grid
 
     def import_assets(self):
         self.animations = {"Down": [], "Up": [], "Right": [], "Left": [],
@@ -58,11 +63,45 @@ class Player(pygame.sprite.Sprite):
 
         # horizontal movement
         self.pos.x += self.direction.x * self.speed * dt
-        self.rect.centerx = self.pos.x
+        self.hitbox.centerx = round(self.pos.x)
+        self.rect.centerx = self.hitbox.centerx
+        self.collision('horizontal')
 
         # vertical movement
         self.pos.y += self.direction.y * self.speed * dt
-        self.rect.centery = self.pos.y
+        self.hitbox.centery = round(self.pos.y)
+        self.rect.centery = self.hitbox.centery
+        self.collision('vertical')
+
+    def collision(self, direction):
+        start_col = max(0, int(self.hitbox.left // TILE_SIZE))
+        end_col = min(len(self.grid[0]), int(self.hitbox.right // TILE_SIZE) + 1)
+        start_row = max(0, int(self.hitbox.top // TILE_SIZE))
+        end_row = min(len(self.grid), int(self.hitbox.bottom // TILE_SIZE) + 1)
+
+        for row_index in range(start_row, end_row):
+            for col_index in range(start_col, end_col):
+                if self.grid[row_index][col_index] == 1:
+                    x = col_index * TILE_SIZE
+                    y = row_index * TILE_SIZE
+                    tile_rect = pygame.Rect(x, y, TILE_SIZE, TILE_SIZE)
+
+                    if self.hitbox.colliderect(tile_rect):
+                        if direction == 'horizontal':
+                            if self.direction.x > 0:  # Moving right
+                                self.hitbox.right = tile_rect.left
+                            if self.direction.x < 0:  # Moving left
+                                self.hitbox.left = tile_rect.right
+                            self.rect.centerx = self.hitbox.centerx
+                            self.pos.x = self.hitbox.centerx
+
+                        if direction == 'vertical':
+                            if self.direction.y > 0:  # Moving down
+                                self.hitbox.bottom = tile_rect.top
+                            if self.direction.y < 0:  # Moving up
+                                self.hitbox.top = tile_rect.bottom
+                            self.rect.centery = self.hitbox.centery
+                            self.pos.y = self.hitbox.centery
 
     def get_status(self):
         keys = pygame.key.get_pressed()

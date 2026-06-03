@@ -2,11 +2,12 @@ import random
 
 
 class DungeonGenerator:
-	def __init__(self, width, height, min_room_size=5, max_depth=4):
+	def __init__(self, width, height, min_room_size=5, max_depth=4, corridor_width=2):
 		self.width = width
 		self.height = height
 		self.min_room_size = min_room_size
 		self.max_depth = max_depth
+		self.corridor_width = corridor_width
 		self.grid = [[1 for _ in range(width)] for _ in range(height)]
 		self.rooms = []
 
@@ -86,13 +87,15 @@ class DungeonGenerator:
 
 	def h_line(self, x1, x2, y):
 		for x in range(min(x1, x2), max(x1, x2) + 1):
-			if 0 <= x < self.width and 0 <= y < self.height:
-				self.grid[y][x] = 0
+			for dy in range(self.corridor_width):
+				if 0 <= x < self.width and 0 <= y + dy < self.height:
+					self.grid[y + dy][x] = 0
 
 	def v_line(self, y1, y2, x):
 		for y in range(min(y1, y2), max(y1, y2) + 1):
-			if 0 <= x < self.width and 0 <= y < self.height:
-				self.grid[y][x] = 0
+			for dx in range(self.corridor_width):
+				if 0 <= x + dx < self.width and 0 <= y < self.height:
+					self.grid[y][x + dx] = 0
 
 
 if __name__ == "__main__":
