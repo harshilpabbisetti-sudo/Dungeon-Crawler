@@ -1,16 +1,20 @@
 import pygame
 from settings import *
-
-class Tile(pygame.sprite.Sprite):
-	def __init__(self, pos, groups, surface):
-		super().__init__(groups)
-		self.image = surface
-		self.rect = self.image.get_rect(topleft = pos)
+from support import get_abs_path
 
 class MapManager:
 	def __init__(self, all_sprites, obstacle_sprites):
 		self.all_sprites = all_sprites
 		self.obstacle_sprites = obstacle_sprites
+		self.load_floor_graphics()
+
+	def load_floor_graphics(self):
+		self.floor_graphics = {}
+		keys = ['t', 'b', 'l', 'r', 'tl', 'tr', 'bl', 'br', 'white', 'blue']
+		for key in keys:
+			path = get_abs_path(f'graphics/map/{key}.png')
+			surf = pygame.image.load(path).convert_alpha()
+			self.floor_graphics[key] = pygame.transform.scale(surf, (TILE_SIZE, TILE_SIZE))
 
 	def create_map(self, grid):
 		grid_width = len(grid[0])
@@ -20,25 +24,37 @@ class MapManager:
 		full_width = grid_width * TILE_SIZE
 		full_height = grid_height * TILE_SIZE
 		floor_surface = pygame.Surface((full_width, full_height))
-		floor_surface.set_colorkey('black') # Make parts without floor transparent
+		floor_surface = pygame.Surface((full_width, full_height), pygame.SRCALPHA)
 		
-		# 2. Create base tile surfaces to blit repeatedly
-		base_tile = pygame.Surface((TILE_SIZE, TILE_SIZE))
-		base_tile.fill('gray20')
-		pygame.draw.rect(base_tile, 'gray15', (0, 0, TILE_SIZE, TILE_SIZE), 1)
-
-		wall_tile = pygame.Surface((TILE_SIZE, TILE_SIZE))
-		wall_tile.fill('gray40')
-		pygame.draw.rect(wall_tile, 'gray30', (0, 0, TILE_SIZE, TILE_SIZE), 1)
-
-		# 3. Blit all tiles onto the huge surface
+		# 2. Blit all floor tiles onto the huge surface
 		for row_index, row in enumerate(grid):
 			for col_index, cell in enumerate(row):
-				x = col_index * TILE_SIZE
-				y = row_index * TILE_SIZE
 				if cell == 0: # Floor
-					floor_surface.blit(base_tile, (x, y))
+					x = col_index * TILE_SIZE
+					y = row_index * TILE_SIZE
+					
+					# Determine which graphic to use based on neighbors
+					# 1: top, 2: right, 4: bottom, 8: left
+					mask = 0
+					if row_index > 0 and grid[row_index - 1][col_index] == 1: mask += 1
+					if col_index < grid_width - 1 and grid[row_index][col_index + 1] == 1: mask += 2
+					if row_index < grid_height - 1 and grid[row_index + 1][col_index] == 1: mask += 4
+					if col_index > 0 and grid[row_index][col_index - 1] == 1: mask += 8
 
-		# 4. Create a single sprite for the entire floor
-		# We add it at (0,0) and make sure it's the first in the group, so it draws under everything
-		Tile((0, 0), [self.all_sprites], floor_surface)
+					mapping = {
+						0: 'white', # Inner floor
+						1: 't', 
+						2: 'r',
+						4: 'b',
+						8: 'l',
+						3: 'tr',
+						6: 'br',
+						12: 'bl',
+						9: 'tl'
+					}
+					
+					# Default to white if complex corner or isolated tile
+					graphic_key = mapping.get(mask, 'white')
+					floor_surface.blit(self.floor_graphics[graphic_key], (x, y))
+
+		return floor_surface
