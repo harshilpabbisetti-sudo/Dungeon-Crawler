@@ -1,7 +1,8 @@
 import pygame
-from player import Player
 from settings import *
-
+from dungeon_gen import DungeonGenerator
+from map_manager import MapManager
+from player import Player
 
 class Level:
 	def __init__(self):
@@ -10,15 +11,24 @@ class Level:
 
 		# sprite groups
 		self.all_sprites = CameraGroup()
+		self.obstacle_sprites = pygame.sprite.Group()
 
-		self.setup()
+		# setup
+		self.dungeon = DungeonGenerator(50, 50)
+		self.grid = self.dungeon.generate()
+		self.map_manager = MapManager(self.all_sprites, self.obstacle_sprites)
+		
+		# create the ground
+		self.map_manager.create_map(self.grid)
 
-	def setup(self):
-		self.player = Player((640,360), self.all_sprites)
+		# spawn player in the center of the first room
+		if self.dungeon.rooms:
+			spawn_x, spawn_y = self.dungeon.rooms[0]['center']
+			self.player = Player((spawn_x * TILE_SIZE, spawn_y * TILE_SIZE), self.all_sprites)
 
 	def run(self, dt):
 		self.display_surface.fill('black')
-		self.all_sprites.draw(self.display_surface)
+		self.all_sprites.custom_draw(self.player)
 		self.all_sprites.update(dt)
 
 		# debugging
@@ -30,7 +40,13 @@ class CameraGroup(pygame.sprite.Group):
 	def __init__(self):
 		super().__init__()
 		self.display_surface = pygame.display.get_surface()
+		self.offset = pygame.math.Vector2()
 
 	def custom_draw(self, player):
+		self.offset.x = player.rect.centerx - SCREEN_WIDTH / 2
+		self.offset.y = player.rect.centery - SCREEN_HEIGHT / 2
+
 		for sprite in self.sprites():
-			self.display_surface.blit(sprite.image, sprite.rect)
+				offset_rect = sprite.rect.copy()
+				offset_rect.center -= self.offset
+				self.display_surface.blit(sprite.image, offset_rect)
