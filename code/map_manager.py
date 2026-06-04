@@ -3,9 +3,8 @@ from settings import *
 from support import get_abs_path
 
 class MapManager:
-	def __init__(self, all_sprites, obstacle_sprites):
+	def __init__(self, all_sprites):
 		self.all_sprites = all_sprites
-		self.obstacle_sprites = obstacle_sprites
 		self.load_floor_graphics()
 
 	def load_floor_graphics(self):

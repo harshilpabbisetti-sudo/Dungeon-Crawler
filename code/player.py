@@ -34,9 +34,8 @@ class Player(pygame.sprite.Sprite):
             full_path = f'graphics/Player/{animation}.png'
             self.animations[animation] = load_and_scale_sprite_sheet(full_path, 64, 64, 2)
 
-    def input(self):
+    def input(self, keys):
         self.speed = 200
-        keys = pygame.key.get_pressed()
 
         if keys[pygame.K_UP]:
             self.direction.y = -1
@@ -103,8 +102,7 @@ class Player(pygame.sprite.Sprite):
                             self.rect.centery = self.hitbox.centery
                             self.pos.y = self.hitbox.centery
 
-    def get_status(self):
-        keys = pygame.key.get_pressed()
+    def get_status(self, keys):
         if self.direction.magnitude() == 0:
             self.status = self.status.split('_')[0] + '_Idle'
         elif keys[pygame.K_LALT]:
@@ -119,8 +117,9 @@ class Player(pygame.sprite.Sprite):
         self.image = self.animations[self.status][int(self.frame_index)]
 
     def update(self, dt):
-        self.input()
-        self.get_status()
+        keys = pygame.key.get_pressed()
+        self.input(keys)
+        self.get_status(keys)
 
         self.move(dt)
         self.animate(dt)

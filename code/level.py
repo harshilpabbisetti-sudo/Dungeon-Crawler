@@ -18,7 +18,7 @@ class Level:
 		# setup
 		self.dungeon = DungeonGenerator(50, 50)
 		self.grid = self.dungeon.generate()
-		self.map_manager = MapManager(self.all_sprites, self.obstacle_sprites)
+		self.map_manager = MapManager(self.all_sprites)
 		
 		# create the ground
 		self.all_sprites.floor_surface = self.map_manager.create_map(self.grid)
@@ -27,6 +27,22 @@ class Level:
 		if self.dungeon.rooms:
 			spawn_x, spawn_y = self.dungeon.rooms[0]['center']
 			self.player = Player((spawn_x * TILE_SIZE, spawn_y * TILE_SIZE), self.all_sprites, self.grid)
+
+			# spawn monsters in other rooms
+			monster_types = ['wolf', 'goblin']
+			for room in self.dungeon.rooms[1:]:
+				if random.choice([True, False]):
+					monster_type = random.choice(monster_types)
+					for _ in range(random.randint(2, 6)):
+						center_x, center_y = room['center']
+						dx = random.randint(-2, 2)
+						dy = random.randint(-2, 2)
+						grid_x = center_x + dx
+						grid_y = center_y + dy
+						if 0 <= grid_x < len(self.grid[0]) and 0 <= grid_y < len(self.grid):
+							if self.grid[grid_y][grid_x] == 0:
+								monster_pos = (grid_x * TILE_SIZE, grid_y * TILE_SIZE)
+								Monster(monster_pos, self.all_sprites, self.grid, monster_type)
 
 	def run(self, dt):
 		self.display_surface.fill('black')
