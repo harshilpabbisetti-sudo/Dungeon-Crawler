@@ -1,125 +1,117 @@
 import pygame
 from settings import *
 from support import *
+from entity import Entity
 
 
-class Player(pygame.sprite.Sprite):
+class Player(Entity):
     def __init__(self, pos, group, grid):
-        super().__init__(group)
+        super().__init__(pos, group, grid)
 
         self.import_assets()
-        self.status = "Down_Idle"
-        self.frame_index = 0
+        self.status = "Idle"
+        self.facing = "Down"
 
         # general setup
-        self.image = self.animations[self.status][self.frame_index]
+        self.image = self.animations[f'{self.facing}_{self.status}'][self.frame_index]
         self.rect = self.image.get_rect(center=pos)
         self.hitbox = pygame.Rect(0, 0, 25, 50)
         self.hitbox.center = self.rect.center
 
-        # movement attributes
-        self.direction = pygame.math.Vector2()
-        self.pos = pygame.math.Vector2(self.rect.center)
-        self.speed = 200
-
-        # collision
-        self.grid = grid
+        # combat attributes
+        self.attacking = False
+        self.sound_radius = 0
 
     def import_assets(self):
-        self.animations = {"Down": [], "Up": [], "Right": [], "Left": [],
-                           "Down_Idle": [], "Up_Idle": [], "Right_Idle": [], "Left_Idle": [],
-                           "Down_Run": [], "Up_Run": [], "Right_Run": [], "Left_Run": []}
+        self.animations = {}
+        directions = ['Down', 'Up', 'Left', 'Right']
+        states = ['Idle', 'Run', 'Slice', 'Pierce', 'Death']
 
-        for animation in self.animations.keys():
-            full_path = f'graphics/Player/{animation}.png'
-            self.animations[animation] = load_and_scale_sprite_sheet(full_path, 64, 64, 2)
+        for direction in directions:
+            for state in states:
+                full_path = f'graphics/Player/{direction}_{state}.png'
+                # Frames are likely 64x64 based on earlier check
+                self.animations[f'{direction}_{state}'] = load_and_scale_sprite_sheet(full_path, 64, 64, 2)
 
     def input(self, keys):
-        self.speed = 200
+        if not self.attacking:
+            self.speed = 200
+            
+            # Movement input
+            if keys[pygame.K_UP]:
+                self.direction.y = -1
+                self.facing = 'Up'
+            elif keys[pygame.K_DOWN]:
+                self.direction.y = 1
+                self.facing = 'Down'
+            else:
+                self.direction.y = 0
 
-        if keys[pygame.K_UP]:
-            self.direction.y = -1
-            self.status = 'Up'
-        elif keys[pygame.K_DOWN]:
-            self.direction.y = 1
-            self.status = 'Down'
-        else:
-            self.direction.y = 0
+            if keys[pygame.K_RIGHT]:
+                self.direction.x = 1
+                self.facing = 'Right'
+            elif keys[pygame.K_LEFT]:
+                self.direction.x = -1
+                self.facing = 'Left'
+            else:
+                self.direction.x = 0
 
-        if keys[pygame.K_RIGHT]:
-            self.direction.x = 1
-            self.status = 'Right'
-        elif keys[pygame.K_LEFT]:
-            self.direction.x = -1
-            self.status = 'Left'
-        else:
-            self.direction.x = 0
-
-    def move(self, dt):
-        # normalizing a vector
-        if self.direction.magnitude() > 0:
-            self.direction = self.direction.normalize()
-
-        # horizontal movement
-        self.pos.x += self.direction.x * self.speed * dt
-        self.hitbox.centerx = round(self.pos.x)
-        self.rect.centerx = self.hitbox.centerx
-        self.collision('horizontal')
-
-        # vertical movement
-        self.pos.y += self.direction.y * self.speed * dt
-        self.hitbox.centery = round(self.pos.y)
-        self.rect.centery = self.hitbox.centery
-        self.collision('vertical')
-
-    def collision(self, direction):
-        start_col = max(0, int(self.hitbox.left // TILE_SIZE))
-        end_col = min(len(self.grid[0]), int(self.hitbox.right // TILE_SIZE) + 1)
-        start_row = max(0, int(self.hitbox.top // TILE_SIZE))
-        end_row = min(len(self.grid), int(self.hitbox.bottom // TILE_SIZE) + 1)
-
-        for row_index in range(start_row, end_row):
-            for col_index in range(start_col, end_col):
-                if self.grid[row_index][col_index] == 1:
-                    x = col_index * TILE_SIZE
-                    y = row_index * TILE_SIZE
-                    tile_rect = pygame.Rect(x, y, TILE_SIZE, TILE_SIZE)
-
-                    if self.hitbox.colliderect(tile_rect):
-                        if direction == 'horizontal':
-                            if self.direction.x > 0:  # Moving right
-                                self.hitbox.right = tile_rect.left
-                            if self.direction.x < 0:  # Moving left
-                                self.hitbox.left = tile_rect.right
-                            self.rect.centerx = self.hitbox.centerx
-                            self.pos.x = self.hitbox.centerx
-
-                        if direction == 'vertical':
-                            if self.direction.y > 0:  # Moving down
-                                self.hitbox.bottom = tile_rect.top
-                            if self.direction.y < 0:  # Moving up
-                                self.hitbox.top = tile_rect.bottom
-                            self.rect.centery = self.hitbox.centery
-                            self.pos.y = self.hitbox.centery
-
+            # Attack input
+            if keys[pygame.K_q]:
+                self.attacking = True
+                self.direction = pygame.math.Vector2() # Stop moving
+                self.frame_index = 0
+                self.status = 'Slice'
+            elif keys[pygame.K_e]:
+                self.attacking = True
+                self.direction = pygame.math.Vector2() # Stop moving
+                self.frame_index = 0
+                self.status = 'Pierce'
+        
     def get_status(self, keys):
+        if self.attacking:
+            return # Status is handled by input/animation logic
+            
         if self.direction.magnitude() == 0:
-            self.status = self.status.split('_')[0] + '_Idle'
+            self.status = 'Idle'
         elif keys[pygame.K_LALT]:
             self.speed = 300
-            self.status = self.status.split('_')[0] + '_Run'
+            self.status = 'Run'
+        else:
+            self.status = 'Run'
 
     def animate(self, dt):
-        self.frame_index += 6 * dt
-        if self.frame_index >= len(self.animations[self.status]):
+        animation_key = f'{self.facing}_{self.status}'
+        
+        # Animation loop
+        self.frame_index += 7 * dt
+        if self.frame_index >= len(self.animations[animation_key]):
             self.frame_index = 0
+            if self.attacking:
+                self.attacking = False
+                self.status = 'Idle'
 
-        self.image = self.animations[self.status][int(self.frame_index)]
+        self.image = self.animations[animation_key][int(self.frame_index)]
+
+    def update_sound_radius(self):
+        if self.attacking:
+            self.sound_radius = SOUND_RADIUS['attack']
+        elif self.status == 'Run':
+            if self.speed == 300: # Running with LALT
+                self.sound_radius = SOUND_RADIUS['run']
+            else: # Normal walking
+                self.sound_radius = 100
+        else:
+            self.sound_radius = 0
+
 
     def update(self, dt):
         keys = pygame.key.get_pressed()
         self.input(keys)
         self.get_status(keys)
 
-        self.move(dt)
+        if not self.attacking:
+            self.move(dt)
+        
         self.animate(dt)
+        self.update_sound_radius()

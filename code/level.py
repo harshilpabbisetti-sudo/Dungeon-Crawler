@@ -49,6 +49,16 @@ class Level:
 		self.all_sprites.custom_draw(self.player)
 		self.all_sprites.update(dt)
 
+		self.check_sound_propagation()
+
+	def check_sound_propagation(self):
+		if self.player.sound_radius > 0:
+			for sprite in self.all_sprites.sprites():
+				if isinstance(sprite, Monster):
+					dist = (pygame.math.Vector2(sprite.rect.center) - pygame.math.Vector2(self.player.rect.center)).magnitude()
+					if dist <= self.player.sound_radius:
+						sprite.hear_sound(self.player.pos)
+
 		# debugging
 		# for sprite in self.all_sprites.sprites():
 		# 	pygame.draw.rect(self.display_surface, 'red', sprite.rect, 3)
@@ -72,13 +82,22 @@ class CameraGroup(pygame.sprite.Group):
 		if self.floor_surface:
 			self.display_surface.blit(self.floor_surface, (0, 0), screen_rect)
 
-		# 2. Draw all other sprites (Monsters, etc.) with offset
+		# 2. Draw sound radius (faint circle)
+		if player.sound_radius > 0:
+			# Subtract offset to draw it in world space relative to camera
+			pygame.draw.circle(self.display_surface, 'gray50', player.rect.center - self.offset, player.sound_radius, 1)
+
+		# 3. Draw all other sprites (Monsters, etc.) with offset
 		for sprite in self.sprites():
 			if sprite != player:
 				if sprite.rect.colliderect(screen_rect):
 					offset_rect = sprite.rect.copy()
 					offset_rect.topleft -= self.offset
 					self.display_surface.blit(sprite.image, offset_rect)
+
+					# Visual alert for monsters
+					if isinstance(sprite, Monster) and sprite.state == 'INSPECT':
+						pygame.draw.circle(self.display_surface, 'yellow', (offset_rect.centerx, offset_rect.top - 10), 5)
 		
 		# 3. Draw player last (on top)
 		offset_rect = player.rect.copy()
