@@ -21,3 +21,12 @@ SOUND_RADIUS = {
 	'run': 250,
 	'attack': 500
 }
+
+VISION_RADIUS = 350
+VISION_ANGLE = 90
+
+Z_LAYER = {
+	'floor': 0,
+	'sound/state': 1,
+	'main': 2
+}

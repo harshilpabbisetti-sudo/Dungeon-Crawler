@@ -5,10 +5,10 @@ from dungeon_gen import DungeonGenerator
 from map_manager import MapManager
 from player import Player
 from monster import Monster
+from debug import *
 
 class Level:
 	def __init__(self):
-		# get the display surface
 		self.display_surface = pygame.display.get_surface()
 
 		# sprite groups
@@ -59,11 +59,6 @@ class Level:
 					if dist <= self.player.sound_radius:
 						sprite.hear_sound(self.player.pos)
 
-		# debugging
-		# for sprite in self.all_sprites.sprites():
-		# 	pygame.draw.rect(self.display_surface, 'red', sprite.rect, 3)
-		# 	pygame.draw.rect(self.display_surface, 'blue', sprite.image.get_bounding_rect(), 5)
-
 class CameraGroup(pygame.sprite.Group):
 	def __init__(self):
 		super().__init__()
@@ -75,31 +70,20 @@ class CameraGroup(pygame.sprite.Group):
 		self.offset.x = player.rect.centerx - SCREEN_WIDTH / 2
 		self.offset.y = player.rect.centery - SCREEN_HEIGHT / 2
 
-		# Define the screen rect in world coordinates for culling
 		screen_rect = pygame.Rect(self.offset.x, self.offset.y, SCREEN_WIDTH, SCREEN_HEIGHT)
+		self.display_rect = self.display_surface.get_rect()
 
-		# 1. Draw the floor (only the visible part)
 		if self.floor_surface:
 			self.display_surface.blit(self.floor_surface, (0, 0), screen_rect)
-
-		# 2. Draw sound radius (faint circle)
 		if player.sound_radius > 0:
-			# Subtract offset to draw it in world space relative to camera
 			pygame.draw.circle(self.display_surface, 'gray50', player.rect.center - self.offset, player.sound_radius, 1)
 
-		# 3. Draw all other sprites (Monsters, etc.) with offset
-		for sprite in self.sprites():
-			if sprite != player:
-				if sprite.rect.colliderect(screen_rect):
-					offset_rect = sprite.rect.copy()
-					offset_rect.topleft -= self.offset
-					self.display_surface.blit(sprite.image, offset_rect)
+		for sprite in sorted(self.sprites(), key=lambda sprite: (sprite.z, sprite.rect.centery)):
+			offset_rect = sprite.rect.copy()
+			offset_rect.center -= self.offset
+			if self.display_rect.colliderect(offset_rect):
+				if isinstance(sprite, Monster) and sprite.state == 'INSPECT':
+					pygame.draw.circle(self.display_surface, 'yellow', (offset_rect.centerx, offset_rect.top - 10), 5)
+				self.display_surface.blit(sprite.image, offset_rect)
 
-					# Visual alert for monsters
-					if isinstance(sprite, Monster) and sprite.state == 'INSPECT':
-						pygame.draw.circle(self.display_surface, 'yellow', (offset_rect.centerx, offset_rect.top - 10), 5)
-		
-		# 3. Draw player last (on top)
-		offset_rect = player.rect.copy()
-		offset_rect.topleft -= self.offset
-		self.display_surface.blit(player.image, offset_rect)
+				# debug_rect(sprite, player, offset_rect)

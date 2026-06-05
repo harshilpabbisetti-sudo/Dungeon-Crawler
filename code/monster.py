@@ -73,6 +73,7 @@ class Monster(Entity):
             else: self.facing = 'Up'
 
     def hear_sound(self, sound_pos):
+        if self.state == 'CHASE': return
         if self.timers['hear_cooldown'].active: return
 
         # Convert pixel pos to grid pos
@@ -92,7 +93,7 @@ class Monster(Entity):
         if not self.path or self.path_index >= len(self.path):
             self.state = 'ROAM'
             self.path = []
-            self.direction = pygame.math.Vector2() # Force stop when reaching target
+            self.direction = pygame.math.Vector2() 
             self.timers['action'].activate()
             return
 
@@ -113,6 +114,7 @@ class Monster(Entity):
 
         if self.state == 'INSPECT':
             self.follow_path()
+        # Note: CHASE state direction is updated via check_vision in Level
 
         self.get_status()
         self.animate(dt)

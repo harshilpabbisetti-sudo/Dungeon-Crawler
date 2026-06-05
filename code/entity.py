@@ -20,6 +20,8 @@ class Entity(pygame.sprite.Sprite):
         self.grid = grid
         self.is_blocked = False
 
+        self.z = Z_LAYER['main']
+
     def move(self, dt):
         # Normalizing vector
         if self.direction.magnitude() > 0:
