@@ -2,11 +2,12 @@ import pygame
 from settings import *
 from support import *
 from entity import Entity
+from end import End
 
 
 class Player(Entity):
-    def __init__(self, pos, group, grid):
-        super().__init__(pos, group, grid)
+    def __init__(self, pos, group, dungeon):
+        super().__init__(pos, group, dungeon.grid)
 
         self.import_assets()
         self.status = "Idle"
@@ -21,6 +22,14 @@ class Player(Entity):
         # combat attributes
         self.attacking = False
         self.sound_radius = 0
+
+        # exit
+        exit_pos = dungeon.rooms[-1]['center']
+        self.exit_rect = pygame.Rect(0, 0, TILE_SIZE, TILE_SIZE)
+        self.exit_rect.center = (exit_pos[0] * TILE_SIZE, exit_pos[1] * TILE_SIZE)
+
+        # end
+        self.end_status = None
 
     def import_assets(self):
         self.animations = {}
@@ -104,6 +113,9 @@ class Player(Entity):
         else:
             self.sound_radius = 0
 
+    def game_end(self):
+        if self.exit_rect.colliderect(self.hitbox):
+            self.end_status = 'win'
 
     def update(self, dt):
         keys = pygame.key.get_pressed()
@@ -115,3 +127,4 @@ class Player(Entity):
         
         self.animate(dt)
         self.update_sound_radius()
+        self.game_end()

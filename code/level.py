@@ -6,6 +6,7 @@ from map_manager import MapManager
 from player import Player
 from monster import Monster
 from debug import *
+from end import End
 
 class Level:
 	def __init__(self):
@@ -21,12 +22,16 @@ class Level:
 		self.map_manager = MapManager(self.all_sprites)
 		
 		# create the ground
-		self.all_sprites.floor_surface = self.map_manager.create_map(self.grid)
+		self.all_sprites.floor_surface = self.map_manager.create_map(self.grid, self.dungeon)
+
+		# end
+		self.win = End('win')
+		self.lose = End('lost')
 
 		# spawn player in the center of the first room
 		if self.dungeon.rooms:
 			spawn_x, spawn_y = self.dungeon.rooms[0]['center']
-			self.player = Player((spawn_x * TILE_SIZE, spawn_y * TILE_SIZE), self.all_sprites, self.grid)
+			self.player = Player((spawn_x * TILE_SIZE, spawn_y * TILE_SIZE), self.all_sprites, self.dungeon)
 
 			# spawn monsters in other rooms
 			monster_types = ['wolf', 'goblin']
@@ -50,6 +55,8 @@ class Level:
 		self.all_sprites.update(dt)
 
 		self.check_sound_propagation()
+		if self.player.end_status == 'win':
+			self.win.play()
 
 	def check_sound_propagation(self):
 		if self.player.sound_radius > 0:

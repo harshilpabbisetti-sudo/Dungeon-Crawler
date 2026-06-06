@@ -9,13 +9,13 @@ class MapManager:
 
 	def load_floor_graphics(self):
 		self.floor_graphics = {}
-		keys = ['t', 'b', 'l', 'r', 'tl', 'tr', 'bl', 'br', 'white', 'blue']
+		keys = ['t', 'b', 'l', 'r', 'tl', 'tr', 'bl', 'br', 'white', 'blue', 'exit']
 		for key in keys:
 			path = get_abs_path(f'graphics/map/{key}.png')
 			surf = pygame.image.load(path).convert_alpha()
 			self.floor_graphics[key] = pygame.transform.scale(surf, (TILE_SIZE, TILE_SIZE))
 
-	def create_map(self, grid):
+	def create_map(self, grid, dungeon):
 		grid_width = len(grid[0])
 		grid_height = len(grid)
 		
@@ -55,5 +55,8 @@ class MapManager:
 					# Default to white if complex corner or isolated tile
 					graphic_key = mapping.get(mask, 'white')
 					floor_surface.blit(self.floor_graphics[graphic_key], (x, y))
+
+					if dungeon.rooms[-1]['center'] == (col_index, row_index):
+						floor_surface.blit(self.floor_graphics['exit'], (x, y))
 
 		return floor_surface

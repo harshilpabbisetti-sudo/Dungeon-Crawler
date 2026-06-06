@@ -13,8 +13,6 @@ class Node:
         return self.f < other.f
 
 def get_path(grid, start, end):
-    # grid: 2D list where 0 is floor, 1 is wall
-    # start, end: (x, y) grid coordinates
     
     start_node = Node(start[0], start[1])
     end_node = Node(end[0], end[1])
