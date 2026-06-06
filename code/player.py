@@ -2,7 +2,6 @@ import pygame
 from settings import *
 from support import *
 from entity import Entity
-from end import End
 
 
 class Player(Entity):
