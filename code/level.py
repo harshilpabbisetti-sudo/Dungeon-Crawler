@@ -1,5 +1,6 @@
 import pygame
 import random
+import math
 from settings import *
 from dungeon_gen import DungeonGenerator
 from map_manager import MapManager
@@ -18,6 +19,7 @@ class Level:
 		# setup
 		self.dungeon = DungeonGenerator(50, 50)
 		self.grid = self.dungeon.generate()
+		self.static_edges = self.dungeon.get_static_edges()
 		self.map_manager = MapManager(self.all_sprites)
 		
 		# create the ground
@@ -42,7 +44,7 @@ class Level:
 						if 0 <= grid_x < len(self.grid[0]) and 0 <= grid_y < len(self.grid):
 							if self.grid[grid_y][grid_x] == 0:
 								monster_pos = (grid_x * TILE_SIZE, grid_y * TILE_SIZE)
-								Monster(monster_pos, self.all_sprites, self.grid, monster_type)
+								Monster(monster_pos, self.all_sprites, self.grid, monster_type, self.static_edges)
 
 	def run(self, dt):
 		self.display_surface.fill('black')
@@ -64,6 +66,7 @@ class CameraGroup(pygame.sprite.Group):
 		self.display_surface = pygame.display.get_surface()
 		self.offset = pygame.math.Vector2()
 		self.floor_surface = None
+		self.vision_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
 
 	def custom_draw(self, player):
 		self.offset.x = player.rect.centerx - SCREEN_WIDTH / 2
@@ -74,6 +77,8 @@ class CameraGroup(pygame.sprite.Group):
 
 		if self.floor_surface:
 			self.display_surface.blit(self.floor_surface, (0, 0), screen_rect)
+		
+		self.vision_surf.fill((0, 0, 0, 0))
 		if player.sound_radius > 0:
 			pygame.draw.circle(self.display_surface, 'gray50', player.rect.center - self.offset, player.sound_radius, 1)
 
@@ -81,8 +86,13 @@ class CameraGroup(pygame.sprite.Group):
 			offset_rect = sprite.rect.copy()
 			offset_rect.center -= self.offset
 			if self.display_rect.colliderect(offset_rect):
+				if isinstance(sprite, Monster):
+					sprite.vision.draw(self.vision_surf, self.offset)
+
 				if isinstance(sprite, Monster) and sprite.state == 'INSPECT':
 					pygame.draw.circle(self.display_surface, 'yellow', (offset_rect.centerx, offset_rect.top - 10), 5)
 				self.display_surface.blit(sprite.image, offset_rect)
+		
+		self.display_surface.blit(self.vision_surf, (0, 0))
 
 				# debug_rect(sprite, player, offset_rect)

@@ -1,4 +1,5 @@
 import random
+from settings import *
 
 
 class DungeonGenerator:
@@ -10,12 +11,6 @@ class DungeonGenerator:
 		self.corridor_width = corridor_width
 		self.grid = [[1 for _ in range(width)] for _ in range(height)]
 		self.rooms = []
-
-	def generate(self):
-		# Initial dungeon area
-		self.split_area(0, 0, self.width, self.height, 0)
-		self.create_corridors()
-		return self.grid
 
 	def split_area(self, x, y, w, h, depth):
 		# Stop splitting if max depth reached or area too small for a room plus padding
@@ -96,6 +91,53 @@ class DungeonGenerator:
 			for dx in range(self.corridor_width):
 				if 0 <= x + dx < self.width and 0 <= y < self.height:
 					self.grid[y][x + dx] = 0
+
+	def get_static_edges(self):
+		# Pre-calculate and merge all wall boundaries into long segments
+		h_edges = []
+		v_edges = []
+		
+		# 1. Collect all boundary edges
+		for y in range(self.height):
+			for x in range(self.width):
+				if self.grid[y][x] == 1:
+					tile_size = TILE_SIZE
+					top, bottom = y * tile_size, (y + 1) * tile_size
+					left, right = x * tile_size, (x + 1) * tile_size
+					
+					# Boundary checks
+					if y > 0 and self.grid[y-1][x] == 0: h_edges.append([left, right, top])
+					if y < self.height - 1 and self.grid[y+1][x] == 0: h_edges.append([left, right, bottom])
+					if x > 0 and self.grid[y][x-1] == 0: v_edges.append([top, bottom, left])
+					if x < self.width - 1 and self.grid[y][x+1] == 0: v_edges.append([top, bottom, right])
+
+		# 2. Merge horizontal edges
+		merged_h = []
+		h_edges.sort(key=lambda e: (e[2], e[0]))
+		for e in h_edges:
+			if merged_h and e[2] == merged_h[-1][2] and e[0] == merged_h[-1][1]:
+				merged_h[-1][1] = e[1]
+			else: merged_h.append(e)
+
+		# 3. Merge vertical edges
+		merged_v = []
+		v_edges.sort(key=lambda e: (e[2], e[0]))
+		for e in v_edges:
+			if merged_v and e[2] == merged_v[-1][2] and e[0] == merged_v[-1][1]:
+				merged_v[-1][1] = e[1]
+			else: merged_v.append(e)
+
+		# 4. Final format
+		final_edges = []
+		for e in merged_h: final_edges.append(((e[0], e[2]), (e[1], e[2])))
+		for e in merged_v: final_edges.append(((e[2], e[0]), (e[2], e[1])))
+		return final_edges
+
+	def generate(self):
+		# Initial dungeon area
+		self.split_area(0, 0, self.width, self.height, 0)
+		self.create_corridors()
+		return self.grid
 
 
 if __name__ == "__main__":
