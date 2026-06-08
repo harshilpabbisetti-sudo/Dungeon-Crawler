@@ -147,7 +147,7 @@ class Monster(Entity):
         # Timers
         self.timers = {
             'action': Timer(random.randint(1000, 3000), self.change_action),
-            'hear_cooldown': Timer(2000)
+            'hear_cooldown': Timer(1000)
         }
         self.timers['action'].activate()
 
@@ -200,7 +200,7 @@ class Monster(Entity):
 
         # Calculate path
         new_path = get_path(self.grid, start_grid, end_grid)
-        if new_path:
+        if new_path or len(new_path) > 20:
             self.state = 'INSPECT'
             self.path = new_path
             self.path_index = 0

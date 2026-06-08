@@ -30,19 +30,22 @@ def get_abs_path(path):
 	return os.path.join(game_folder_path, path)
 
 
-def import_folder(path):
+def import_scaled_folder(path, scale=1):
 	surface_list = []
 
 	for _, __, img_files in walk(path):
 		for image in img_files:
 			full_path = path + '/' + image
 			image_surf = pygame.image.load(full_path).convert_alpha()
+			orig_width, orig_height = image_surf.get_size()
+
+			image_surf = pygame.transform.scale(image_surf, (orig_width * scale, orig_height * scale))
 			surface_list.append(image_surf)
 
 	return surface_list
 
 
-def load_and_upscale_sheet(path, scale_factor=4):
+def load_and_upscale_sprite(path, scale_factor=4):
 	path = get_abs_path(path)
 
 	# Load the original tiny sheet
@@ -59,7 +62,7 @@ def load_and_upscale_sheet(path, scale_factor=4):
 	return upscaled_sheet
 
 
-def load_and_scale_sprite_sheet(path, orig_width, orig_height, scale):
+def load_and_scale_sprite_sheet(path, orig_width, orig_height, scale=1):
 	path = get_abs_path(path)
 
 	# Load the big image

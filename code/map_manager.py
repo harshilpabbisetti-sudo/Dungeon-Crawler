@@ -1,6 +1,6 @@
 import pygame
 from settings import *
-from support import get_abs_path
+from support import load_and_upscale_sprite
 
 class MapManager:
 	def __init__(self, all_sprites):
@@ -11,9 +11,8 @@ class MapManager:
 		self.floor_graphics = {}
 		keys = ['t', 'b', 'l', 'r', 'tl', 'tr', 'bl', 'br', 'white', 'blue', 'exit']
 		for key in keys:
-			path = get_abs_path(f'graphics/map/{key}.png')
-			surf = pygame.image.load(path).convert_alpha()
-			self.floor_graphics[key] = pygame.transform.scale(surf, (TILE_SIZE, TILE_SIZE))
+			path = f'graphics/map/{key}.png'
+			self.floor_graphics[key] = load_and_upscale_sprite(path, 2)
 
 	def create_map(self, grid, dungeon):
 		grid_width = len(grid[0])

@@ -2,10 +2,13 @@ import pygame
 from settings import *
 from support import *
 from entity import Entity
+from timer import Timer
+
+Vector = pygame.math.Vector2
 
 
 class Player(Entity):
-    def __init__(self, pos, group, dungeon):
+    def __init__(self, pos, group, dungeon, hideable_sprites):
         super().__init__(pos, group, dungeon.grid)
 
         self.import_assets()
@@ -17,6 +20,7 @@ class Player(Entity):
         self.rect = self.image.get_rect(center=pos)
         self.hitbox = pygame.Rect(0, 0, 25, 50)
         self.hitbox.center = self.rect.center
+        self.hideable_sprites = hideable_sprites
 
         # combat attributes
         self.attacking = False
@@ -30,6 +34,12 @@ class Player(Entity):
         # end
         self.end_status = None
 
+        # hiding
+        self.hid = False
+
+        # timer
+        self.key_timer = Timer(500)
+
     def import_assets(self):
         self.animations = {}
         directions = ['Down', 'Up', 'Left', 'Right']
@@ -41,8 +51,24 @@ class Player(Entity):
                 # Frames are likely 64x64 based on earlier check
                 self.animations[f'{direction}_{state}'] = load_and_scale_sprite_sheet(full_path, 64, 64, 2)
 
+    def hiding(self):
+        collided_sprite = pygame.sprite.spritecollideany(self, self.hideable_sprites)
+        if collided_sprite:
+            self.hid = not self.hid
+            collided_sprite.has_player = not collided_sprite.has_player
+            self.pos = Vector(collided_sprite.rect.center)
+            self.direction = Vector(0, 0)
+
+
     def input(self, keys):
-        if not self.attacking:
+        # hiding
+        if keys[pygame.K_f] and not self.key_timer.active:
+            self.hiding()
+            self.key_timer.activate()
+        self.key_timer.update()
+
+        # movement
+        if not self.attacking and not self.hid:
             self.speed = 200
             
             # Movement input
