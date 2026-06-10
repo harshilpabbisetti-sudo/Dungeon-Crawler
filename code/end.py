@@ -19,9 +19,9 @@ class End:
         if message == 'win':
             self.text = self.font.render('You Won', False, 'Green')
         elif message == 'lost':
-            self.text = self.font.render('You Lost', False, 'Green')
+            self.text = self.font.render('You Lost', False, 'Red')
         else:
-            self.text = self.font.render('error message', False, 'Green')
+            self.text = self.font.render('error message', False, 'White')
 
         self.text_rect = self.text.get_rect(center=(SCREEN_WIDTH / 2, SCREEN_HEIGHT/2))
 

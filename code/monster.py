@@ -30,12 +30,13 @@ class VisionCone:
             if dx == 0 and dy == 0: continue
             
             t = ((cx - p1[0]) * dx + (cy - p1[1]) * dy) / (dx*dx + dy*dy)
-            t = max(0, min(1, t))
-            
+            if not (0 <= t <= 1):
+                continue
             closest_x = p1[0] + t * dx
             closest_y = p1[1] + t * dy
-            
+
             dist_sq = (cx - closest_x)**2 + (cy - closest_y)**2
+
             if dist_sq <= r**2:
                 relevant_edges.append((p1, p2))
         return relevant_edges
@@ -79,8 +80,8 @@ class VisionCone:
         
         # Always add rays along the arc for smoothness
         arc_steps = 20
-        for i in range(arc_steps + 1):
-            angles.add(base_angle - half_fov + (half_fov * 2) * (i / arc_steps))
+        for i in range(arc_steps):
+            angles.add(base_angle - half_fov + (half_fov * 2 * i) / arc_steps)
         
         for p1, p2 in edges:
             for p in [p1, p2]:
@@ -121,12 +122,54 @@ class VisionCone:
         if len(screen_points) > 2:
             pygame.draw.polygon(surface, (255, 255, 100, 40), screen_points)
 
+    def check_detection(self, target_pos):
+        # 1. Distance check
+        dist_vec = pygame.math.Vector2(target_pos) - self.owner.rect.center
+        dist = dist_vec.magnitude()
+        if dist > self.radius:
+            return False
+            
+        # 2. Angle check
+        angle_map = {'Right': 0, 'Down': 90, 'Left': 180, 'Up': 270}
+        base_angle = math.radians(angle_map[self.owner.facing])
+        half_fov = math.radians(self.angle / 2)
+        
+        target_angle = math.atan2(dist_vec.y, dist_vec.x)
+        diff = (target_angle - base_angle + math.pi) % (2 * math.pi) - math.pi
+        
+        if abs(diff) > half_fov:
+            return False
+            
+        # 3. Line-of-sight check (Ray-cast)
+        dx = math.cos(target_angle)
+        dy = math.sin(target_angle)
+        ox, oy = self.owner.rect.center
+        
+        relevant_edges = self.get_edges()
+        for p1, p2 in relevant_edges:
+            x1, y1 = p1
+            x2, y2 = p2
+            
+            denominator = (dx * (y2 - y1) - dy * (x2 - x1))
+            if abs(denominator) < 0.0001: continue
+            
+            t = ((x1 - ox) * (y2 - y1) - (y1 - oy) * (x2 - x1)) / denominator
+            u = ((x1 - ox) * dy - (y1 - oy) * dx) / denominator
+            
+            if t > 0 and 0 <= u <= 1:
+                # If a wall is closer than the player, we are obscured
+                if t < dist - 5: # Small buffer
+                    return False
+        
+        return True
+
 
 class Monster(Entity):
-    def __init__(self, pos, group, grid, monster_type, static_edges):
+    def __init__(self, pos, group, grid, monster_type, static_edges, player):
         super().__init__(pos, group, grid)
         
         self.monster_type = monster_type
+        self.player = player
 
         # state
         self.state = 'ROAM'
@@ -144,15 +187,20 @@ class Monster(Entity):
         # Movement
         self.speed = 100
 
+        # Chase
+        self.player_pos = None
+
         # Timers
         self.timers = {
             'action': Timer(random.randint(1000, 3000), self.change_action),
-            'hear_cooldown': Timer(1000)
+            'hear_cooldown': Timer(1000),
+            'chase_lost': Timer(3000, self.stop_chase)
         }
         self.timers['action'].activate()
 
         # Vision
         self.vision = VisionCone(self, VISION_RADIUS, VISION_ANGLE, static_edges)
+
     def import_assets(self):
         self.animations = {}
         # Mapping from file prefix to Entity direction
@@ -190,23 +238,6 @@ class Monster(Entity):
             if self.direction.y > 0: self.facing = 'Down'
             else: self.facing = 'Up'
 
-    def hear_sound(self, sound_pos):
-        if self.state == 'CHASE': return
-        if self.timers['hear_cooldown'].active: return
-
-        # Convert pixel pos to grid pos
-        start_grid = (int(self.rect.centerx // TILE_SIZE), int(self.rect.centery // TILE_SIZE))
-        end_grid = (int(sound_pos[0] // TILE_SIZE), int(sound_pos[1] // TILE_SIZE))
-
-        # Calculate path
-        new_path = get_path(self.grid, start_grid, end_grid)
-        if new_path or len(new_path) > 20:
-            self.state = 'INSPECT'
-            self.path = new_path
-            self.path_index = 0
-            self.timers['action'].deactivate()
-            self.timers['hear_cooldown'].activate()
-
     def follow_path(self):
         if not self.path or self.path_index >= len(self.path):
             self.state = 'ROAM'
@@ -226,13 +257,91 @@ class Monster(Entity):
         else:
             self.path_index += 1
 
+    def chase_player(self):
+        if self.player_pos:
+            self.direction = self.player_pos - self.pos
+            if self.direction.magnitude() > 0:
+                self.direction = self.direction.normalize()
+            self.speed = 180 # Faster when chasing
+        else:
+            self.stop_chase()
+
+    def stop_chase(self):
+        self.state = 'ROAM'
+        self.speed = 100
+        self.direction = pygame.math.Vector2()
+        self.timers['action'].activate()
+
+    def check_vision(self, player):
+        # If player is hidden, they can only be detected if already in CHASE and in vision
+        can_detect = not player.hid or self.state == 'CHASE'
+        
+        is_visible = False
+        if can_detect:
+            is_visible = self.vision.check_detection(player.pos)
+        
+        if is_visible:
+            # Player is seen!
+            if self.state != 'CHASE':
+                self.state = 'CHASE'
+                self.timers['action'].deactivate()
+            
+            self.player_pos = pygame.math.Vector2(player.pos)
+            self.timers['chase_lost'].deactivate()
+        else:
+            # Player is NOT seen
+            if self.state == 'CHASE':
+                # If they were chasing, start the "lost" timer
+                if not self.timers['chase_lost'].active:
+                    self.timers['chase_lost'].activate()
+                
+                # If player hides while NOT visible, stop chase immediately
+                if player.hid:
+                    self.stop_chase()
+                    self.timers['chase_lost'].deactivate()
+
+    def check_hearing(self, player):
+        if player.sound_radius > 0:
+            dist = (pygame.math.Vector2(self.rect.center) - pygame.math.Vector2(player.rect.center)).magnitude()
+            if dist <= player.sound_radius:
+                self.hear_sound(player.pos)
+
+    def hear_sound(self, sound_pos):
+        if self.state == 'CHASE': return
+        if self.timers['hear_cooldown'].active: return
+
+        # Convert pixel pos to grid pos
+        start_grid = (int(self.rect.centerx // TILE_SIZE), int(self.rect.centery // TILE_SIZE))
+        end_grid = (int(sound_pos[0] // TILE_SIZE), int(sound_pos[1] // TILE_SIZE))
+
+        # Calculate path
+        new_path = get_path(self.grid, start_grid, end_grid)
+        if new_path or len(new_path) > 20:
+            self.state = 'INSPECT'
+            self.path = new_path
+            self.path_index = 0
+            self.timers['action'].deactivate()
+            self.timers['hear_cooldown'].activate()
+
+    def check_player_caught(self, player):
+        if self.state == 'CHASE':
+            if self.hitbox.colliderect(player.hitbox) and not player.hid:
+                player.end_status = 'lost'
+
     def update(self, dt):
         for timer in self.timers.values():
             timer.update()
 
+        # 1. Senses
+        self.check_vision(self.player)
+        self.check_hearing(self.player)
+        self.check_player_caught(self.player)
+
+        # 2. State Machine
         if self.state == 'INSPECT':
             self.follow_path()
-        # Note: CHASE state direction is updated via check_vision in Level
+        elif self.state == 'CHASE':
+            self.chase_player()
 
         self.get_status()
         self.animate(dt)

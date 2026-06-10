@@ -9,6 +9,7 @@ from monster import Monster
 from debug import *
 from hiding_obj import Hiding_Obj
 
+
 class Level:
 	def __init__(self):
 		self.display_surface = pygame.display.get_surface()
@@ -22,7 +23,7 @@ class Level:
 		self.grid = self.dungeon.generate()
 		self.static_edges = self.dungeon.get_static_edges()
 		self.map_manager = MapManager(self.all_sprites)
-		
+
 		# create the ground
 		self.all_sprites.floor_surface = self.map_manager.create_map(self.grid, self.dungeon)
 
@@ -34,16 +35,28 @@ class Level:
 
 			# spawn monsters and sprites to hide into in other rooms
 			monster_types = ['wolf', 'goblin']
+			hideable_types = ['barrel', 'blue_chest', 'gold_chest']
 			for room in self.dungeon.rooms[1:]:
-				# hideable
-				center_x, center_y = room['center']
-				Hiding_Obj('barrel', (center_x * TILE_SIZE, center_y * TILE_SIZE), [self.all_sprites, self.hideable_sprite])
+				# find valid border positions for hiding objects
+				if random.choice([True, False]):  # need hidables or not
+					hideable_type = random.choice(hideable_types)
+
+					for _ in range(2):
+						if random.choice([True, False]):  # true for top/bottom borders
+							pos = (random.randint(room['x'], room['x'] + room['w'] - 1), random.choice([room['y'], room['y'] + room['h'] - 1]))
+
+						else:
+							pos = (random.choice([room['x'], room['x'] + room['w'] - 1]), random.randint(room['y'], room['y'] + room['h'] - 1))
+
+						if self.grid[pos[0]+1][pos[1]] or self.grid[pos[0]-1][pos[1]] or self.grid[pos[0]][pos[1]+1] or self.grid[pos[0]][pos[1]-1]:
+							Hiding_Obj(hideable_type, (pos[0] * TILE_SIZE, pos[1] * TILE_SIZE), [self.all_sprites, self.hideable_sprite])
+							continue
 
 				# monsters
 				if random.choice([True, False]):
 					monster_type = random.choice(monster_types)
 					for _ in range(random.randint(2, 6)):
-
+						center_x, center_y = room['center']
 						dx = random.randint(-1, 1)
 						dy = random.randint(-1, 1)
 						grid_x = center_x + dx
@@ -51,21 +64,13 @@ class Level:
 						if 0 <= grid_x < len(self.grid[0]) and 0 <= grid_y < len(self.grid):
 							if self.grid[grid_y][grid_x] == 0:
 								monster_pos = (grid_x * TILE_SIZE, grid_y * TILE_SIZE)
-								Monster(monster_pos, self.all_sprites, self.grid, monster_type, self.static_edges)
+								Monster(monster_pos, self.all_sprites, self.grid, monster_type, self.static_edges, self.player)
 
 	def run(self, dt):
 		self.display_surface.fill('black')
-		self.all_sprites.custom_draw(self.player)
 		self.all_sprites.update(dt)
-		self.check_sound_propagation()
+		self.all_sprites.custom_draw(self.player)
 
-	def check_sound_propagation(self):
-		if self.player.sound_radius > 0:
-			for sprite in self.all_sprites.sprites():
-				if isinstance(sprite, Monster):
-					dist = (pygame.math.Vector2(sprite.rect.center) - pygame.math.Vector2(self.player.rect.center)).magnitude()
-					if dist <= self.player.sound_radius:
-						sprite.hear_sound(self.player.pos)
 
 class CameraGroup(pygame.sprite.Group):
 	def __init__(self):
@@ -74,13 +79,13 @@ class CameraGroup(pygame.sprite.Group):
 		self.offset = pygame.math.Vector2()
 		self.floor_surface = None
 		self.vision_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+		self.display_rect = self.display_surface.get_rect()
 
 	def custom_draw(self, player):
 		self.offset.x = player.rect.centerx - SCREEN_WIDTH / 2
 		self.offset.y = player.rect.centery - SCREEN_HEIGHT / 2
 
 		screen_rect = pygame.Rect(self.offset.x, self.offset.y, SCREEN_WIDTH, SCREEN_HEIGHT)
-		self.display_rect = self.display_surface.get_rect()
 
 		if self.floor_surface:
 			self.display_surface.blit(self.floor_surface, (0, 0), screen_rect)
@@ -100,6 +105,9 @@ class CameraGroup(pygame.sprite.Group):
 					if sprite.state == 'INSPECT':
 						# inspect sign
 						pygame.draw.circle(self.display_surface, 'yellow', (offset_rect.centerx, offset_rect.top - 10), 5)
+					elif sprite.state == 'CHASE':
+						# chase sign
+						pygame.draw.circle(self.display_surface, 'red', (offset_rect.centerx, offset_rect.top - 10), 5)
 
 				# for player
 				if isinstance(sprite, Player) and sprite.hid:
@@ -108,5 +116,6 @@ class CameraGroup(pygame.sprite.Group):
 
 				# # analysis
 				# debug_values(player.key_timer.active, True)
+				debug_rect(sprite, player, offset_rect)
 		
 		self.display_surface.blit(self.vision_surf, (0, 0))
