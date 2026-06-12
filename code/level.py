@@ -31,7 +31,7 @@ class Level:
 		if self.dungeon.rooms:
 			# spawn player
 			spawn_x, spawn_y = self.dungeon.rooms[0]['center']
-			self.player = Player((spawn_x * TILE_SIZE, spawn_y * TILE_SIZE), self.all_sprites, self.dungeon, self.hideable_sprite)
+			self.player = Player((spawn_x * TILE_SIZE, spawn_y * TILE_SIZE), self.all_sprites, self.dungeon, self.hideable_sprite, self)
 
 			# spawn monsters and sprites to hide into in other rooms
 			monster_types = ['wolf', 'goblin']
@@ -48,7 +48,7 @@ class Level:
 						else:
 							pos = (random.choice([room['x'], room['x'] + room['w'] - 1]), random.randint(room['y'], room['y'] + room['h'] - 1))
 
-						if self.grid[pos[0]+1][pos[1]] or self.grid[pos[0]-1][pos[1]] or self.grid[pos[0]][pos[1]+1] or self.grid[pos[0]][pos[1]-1]:
+						if self.grid[pos[1]+1][pos[0]] or self.grid[pos[1]-1][pos[0]] or self.grid[pos[1]][pos[0]+1] or self.grid[pos[1]][pos[0]-1]:
 							Hiding_Obj(hideable_type, (pos[0] * TILE_SIZE, pos[1] * TILE_SIZE), [self.all_sprites, self.hideable_sprite])
 							continue
 
@@ -64,12 +64,18 @@ class Level:
 						if 0 <= grid_x < len(self.grid[0]) and 0 <= grid_y < len(self.grid):
 							if self.grid[grid_y][grid_x] == 0:
 								monster_pos = (grid_x * TILE_SIZE, grid_y * TILE_SIZE)
-								Monster(monster_pos, self.all_sprites, self.grid, monster_type, self.static_edges, self.player)
+								Monster(monster_pos, self.all_sprites, self.grid, monster_type, self.static_edges, self.player, self.hideable_sprite)
 
 	def run(self, dt):
 		self.display_surface.fill('black')
 		self.all_sprites.update(dt)
 		self.all_sprites.custom_draw(self.player)
+
+	def notify_monsters_of_hiding(self, player_pos):
+		for sprite in self.all_sprites:
+			if isinstance(sprite, Monster):
+				if sprite.vision.check_detection(player_pos):
+					sprite.notify_player_hiding()
 
 
 class CameraGroup(pygame.sprite.Group):

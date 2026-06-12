@@ -19,7 +19,8 @@ DAMAGE = {
 
 SOUND_RADIUS = {
 	'run': 250,
-	'attack': 500
+	'attack': 500,
+	'hiding': 200
 }
 
 VISION_RADIUS = 200

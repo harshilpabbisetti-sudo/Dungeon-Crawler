@@ -8,7 +8,7 @@ Vector = pygame.math.Vector2
 
 
 class Player(Entity):
-    def __init__(self, pos, group, dungeon, hideable_sprites):
+    def __init__(self, pos, group, dungeon, hideable_sprites, level):
         super().__init__(pos, group, dungeon.grid)
 
         self.import_assets()
@@ -21,6 +21,7 @@ class Player(Entity):
         self.hitbox = pygame.Rect(0, 0, 25, 50)
         self.hitbox.center = self.rect.center
         self.hideable_sprites = hideable_sprites
+        self.level = level
 
         # combat attributes
         self.attacking = False
@@ -36,6 +37,7 @@ class Player(Entity):
 
         # hiding
         self.hid = False
+        self.hidable_sprite = None
 
         # timer
         self.key_timer = Timer(500)
@@ -48,17 +50,24 @@ class Player(Entity):
         for direction in directions:
             for state in states:
                 full_path = f'graphics/Player/{direction}_{state}.png'
-                # Frames are likely 64x64 based on earlier check
                 self.animations[f'{direction}_{state}'] = load_and_scale_sprite_sheet(full_path, 64, 64, 2)
 
     def hiding(self):
         collided_sprite = pygame.sprite.spritecollideany(self, self.hideable_sprites)
         if collided_sprite:
+            # Check if anyone sees us BEFORE we hide
+            if not self.hid:
+                self.level.notify_monsters_of_hiding(self.pos)
+
             self.hid = not self.hid
+            if not self.hidable_sprite:
+                self.hidable_sprite = collided_sprite
+            else:
+                self.hidable_sprite = None
             collided_sprite.has_player = not collided_sprite.has_player
             self.pos = Vector(collided_sprite.rect.center)
             self.direction = Vector(0, 0)
-
+            self.sound_radius = SOUND_RADIUS['hiding']
 
     def input(self, keys):
         # hiding

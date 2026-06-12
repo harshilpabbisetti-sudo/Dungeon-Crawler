@@ -32,7 +32,9 @@ def get_path(grid, start, end):
             while current_node:
                 path.append((current_node.x, current_node.y))
                 current_node = current_node.parent
-            return path[::-1] # Return reversed path
+            if len(path)<20:
+                return path[::-1] # Return reversed path
+            else: return None
             
         # Neighbors (Up, Down, Left, Right)
         for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
