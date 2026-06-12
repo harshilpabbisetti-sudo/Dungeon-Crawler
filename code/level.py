@@ -24,6 +24,12 @@ class Level:
 		self.static_edges = self.dungeon.get_static_edges()
 		self.map_manager = MapManager(self.all_sprites)
 
+		# Fade-in setup
+		self.fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+		self.fade_surface.fill('black')
+		self.fade_alpha = 255.0
+		self.fade_speed = 200.0 # Alpha units per second
+
 		# create the ground
 		self.all_sprites.floor_surface = self.map_manager.create_map(self.grid, self.dungeon)
 
@@ -71,6 +77,13 @@ class Level:
 		self.all_sprites.update(dt)
 		self.all_sprites.custom_draw(self.player)
 
+		# Draw and update fade-in overlay
+		if self.fade_alpha > 0:
+			self.fade_alpha -= self.fade_speed * dt
+			if self.fade_alpha < 0: self.fade_alpha = 0
+			self.fade_surface.set_alpha(int(self.fade_alpha))
+			self.display_surface.blit(self.fade_surface, (0, 0))
+
 	def notify_monsters_of_hiding(self, player_pos):
 		for sprite in self.all_sprites:
 			if isinstance(sprite, Monster):
@@ -95,7 +108,7 @@ class CameraGroup(pygame.sprite.Group):
 
 		if self.floor_surface:
 			self.display_surface.blit(self.floor_surface, (0, 0), screen_rect)
-		
+
 		self.vision_surf.fill((0, 0, 0, 0))
 		if player.sound_radius > 0:
 			pygame.draw.circle(self.display_surface, 'gray50', player.rect.center - self.offset, player.sound_radius, 1)
@@ -122,6 +135,6 @@ class CameraGroup(pygame.sprite.Group):
 
 				# # analysis
 				# debug_values(player.key_timer.active, True)
-				debug_rect(sprite, player, offset_rect)
+				# debug_rect(sprite, player, offset_rect)
 		
 		self.display_surface.blit(self.vision_surf, (0, 0))

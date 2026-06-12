@@ -23,9 +23,9 @@ class Player(Entity):
         self.hideable_sprites = hideable_sprites
         self.level = level
 
-        # combat attributes
-        self.attacking = False
+        # Combat attributes
         self.sound_radius = 0
+        self.dying = False
 
         # exit
         exit_pos = dungeon.rooms[-1]['center']
@@ -45,7 +45,7 @@ class Player(Entity):
     def import_assets(self):
         self.animations = {}
         directions = ['Down', 'Up', 'Left', 'Right']
-        states = ['Idle', 'Run', 'Slice', 'Pierce', 'Death']
+        states = ['Idle', 'Run', 'Death']
 
         for direction in directions:
             for state in states:
@@ -77,69 +77,54 @@ class Player(Entity):
         self.key_timer.update()
 
         # movement
-        if not self.attacking and not self.hid:
+        if not self.hid and not self.dying:
             self.speed = 200
             
             # Movement input
-            if keys[pygame.K_UP]:
+            if keys[pygame.K_UP] or keys[pygame.K_w]:
                 self.direction.y = -1
                 self.facing = 'Up'
-            elif keys[pygame.K_DOWN]:
+            elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
                 self.direction.y = 1
                 self.facing = 'Down'
             else:
                 self.direction.y = 0
 
-            if keys[pygame.K_RIGHT]:
+            if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
                 self.direction.x = 1
                 self.facing = 'Right'
-            elif keys[pygame.K_LEFT]:
+            elif keys[pygame.K_LEFT] or keys[pygame.K_a]:
                 self.direction.x = -1
                 self.facing = 'Left'
             else:
                 self.direction.x = 0
-
-            # Attack input
-            if keys[pygame.K_q]:
-                self.attacking = True
-                self.direction = pygame.math.Vector2() # Stop moving
-                self.frame_index = 0
-                self.status = 'Slice'
-            elif keys[pygame.K_e]:
-                self.attacking = True
-                self.direction = pygame.math.Vector2() # Stop moving
-                self.frame_index = 0
-                self.status = 'Pierce'
         
     def get_status(self, keys):
-        if self.attacking:
-            return # Status is handled by input/animation logic
-            
-        if self.direction.magnitude() == 0:
+        if self.dying:
+            self.status = 'Death'
+        elif self.direction.magnitude() == 0:
             self.status = 'Idle'
-        elif keys[pygame.K_LALT]:
-            self.speed = 300
-            self.status = 'Run'
         else:
             self.status = 'Run'
+            if keys[pygame.K_LALT]:
+             self.speed = 300
 
     def animate(self, dt):
         animation_key = f'{self.facing}_{self.status}'
-        
+
         # Animation loop
         self.frame_index += 7 * dt
         if self.frame_index >= len(self.animations[animation_key]):
-            self.frame_index = 0
-            if self.attacking:
-                self.attacking = False
-                self.status = 'Idle'
+            if self.dying:
+                self.frame_index = len(self.animations[animation_key]) - 1
+                self.end_status = 'lost'
+            else:
+                self.frame_index = 0
 
         self.image = self.animations[animation_key][int(self.frame_index)]
 
     def update_sound_radius(self):
-        if self.attacking:
-            self.sound_radius = SOUND_RADIUS['attack']
-        elif self.status == 'Run':
+        if self.status == 'Run':
             if self.speed == 300: # Running with LALT
                 self.sound_radius = SOUND_RADIUS['run']
             else: # Normal walking
@@ -150,13 +135,14 @@ class Player(Entity):
     def game_end(self):
         if self.exit_rect.colliderect(self.hitbox):
             self.end_status = 'win'
+        # lost decided in self.animate()
 
     def update(self, dt):
         keys = pygame.key.get_pressed()
         self.input(keys)
         self.get_status(keys)
 
-        if not self.attacking:
+        if not self.dying:
             self.move(dt)
         
         self.animate(dt)

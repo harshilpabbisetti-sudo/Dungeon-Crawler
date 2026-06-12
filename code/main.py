@@ -42,10 +42,10 @@ class Game:
 					self.state = 'LOST'
 			
 			elif self.state == 'WIN':
-				self.win_screen.play()
+				self.win_screen.run(dt)
 			
 			elif self.state == 'LOST':
-				self.lose_screen.play()
+				self.lose_screen.run(dt)
 
 			pygame.display.update()
 

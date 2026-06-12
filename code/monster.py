@@ -7,6 +7,10 @@ from timer import Timer
 from entity import Entity
 from astar import get_path
 
+Vector = pygame.math.Vector2
+
+# is it possible for the monster to directly follow the player(ie to directly go to player center pixel and ignore path) if its inside vision cone??
+
 class VisionCone:
     def __init__(self, owner, radius, angle, static_edges, hideable_sprites):
         self.owner = owner
@@ -39,7 +43,7 @@ class VisionCone:
                 relevant_edges.append((p1, p2))
 
         for sprite in self.hideable_sprites:
-            if (pygame.math.Vector2(sprite.rect.center) - pygame.math.Vector2(cx, cy)).magnitude() < r + 100:
+            if (Vector(sprite.rect.center) - Vector(cx, cy)).magnitude() < r + 100:
                 rect = sprite.rect
                 relevant_edges.append(((rect.left, rect.top), (rect.right, rect.top)))
                 relevant_edges.append(((rect.right, rect.top), (rect.right, rect.bottom)))
@@ -99,12 +103,12 @@ class VisionCone:
             return diff
 
         points.sort(key=sort_by_relative_angle)
-        screen_points = [pygame.math.Vector2(self.owner.rect.center) - offset]
+        screen_points = [Vector(self.owner.rect.center) - offset]
         for p in points:
             angle = math.atan2(p[1] - self.owner.rect.centery, p[0] - self.owner.rect.centerx)
             diff = (angle - base_angle + math.pi) % (2 * math.pi) - math.pi
             if abs(diff) <= half_fov + 0.01:
-                screen_points.append(pygame.math.Vector2(p) - offset)
+                screen_points.append(Vector(p) - offset)
 
         if len(screen_points) > 2:
             if self.owner.state == 'ROAM':
@@ -115,7 +119,7 @@ class VisionCone:
                 pygame.draw.polygon(surface, (231, 76, 60, 60), screen_points)
 
     def check_detection(self, target_pos):
-        dist_vec = pygame.math.Vector2(target_pos) - self.owner.rect.center
+        dist_vec = Vector(target_pos) - self.owner.rect.center
         dist = dist_vec.magnitude()
         if dist > self.radius: return False
             
@@ -158,25 +162,28 @@ class Monster(Entity):
         self.timers = {'action': Timer(random.randint(1000, 3000), self.change_action), 'hear_cooldown': Timer(1000)}
         self.timers['action'].activate()
         self.vision = VisionCone(self, VISION_RADIUS, VISION_ANGLE, static_edges, hideable_sprites)
+        self.attacking = False
 
     def import_assets(self):
         self.animations = {}
         directions = {'D': 'Down', 'U': 'Up', 'L': 'Left', 'R': 'Right'}
-        states = ['Walk', 'Attack', 'Death']
+        states = ['Walk', 'Attack']
         for prefix, direction in directions.items():
             for state in states:
                 full_path = f'graphics/Monsters/{self.monster_type}/{prefix}_{state}.png'
                 self.animations[f'{direction}_{state}'] = load_and_scale_sprite_sheet(full_path, 48, 48, 2)
             
     def change_action(self):
-        if self.state == 'CHASE': return
-        if random.random() < 0.3: self.direction = pygame.math.Vector2(0, 0)
-        else: self.direction = pygame.math.Vector2(random.choice([-1, 0, 1]), random.choice([-1, 0, 1]))
+        if self.state == 'CHASE' or self.state == 'INSPECT': return
+        if random.random() < 0.3: self.direction = Vector(0, 0)
+        else: self.direction = Vector(random.choice([-1, 0, 1]), random.choice([-1, 0, 1]))
         self.timers['action'].duration = random.randint(1000, 3000)
         self.timers['action'].activate()
 
     def get_status(self):
-        if self.direction.magnitude() == 0: pass
+        if self.attacking:
+            self.status = 'Attack'
+        elif self.direction.magnitude() == 0: pass
         elif abs(self.direction.x) > abs(self.direction.y) + 0.1:
             self.facing = 'Right' if self.direction.x > 0 else 'Left'
         elif abs(self.direction.y) > abs(self.direction.x) + 0.1:
@@ -184,10 +191,10 @@ class Monster(Entity):
 
     def follow_path(self):
         if not self.path or self.path_index >= len(self.path):
-            self.direction = pygame.math.Vector2(0, 0)
+            self.direction = Vector(0, 0)
             return True
         target_grid = self.path[self.path_index]
-        target_pixel = pygame.math.Vector2(target_grid[0] * TILE_SIZE + TILE_SIZE / 2, target_grid[1] * TILE_SIZE + TILE_SIZE / 2)
+        target_pixel = Vector(target_grid[0] * TILE_SIZE + TILE_SIZE / 2, target_grid[1] * TILE_SIZE + TILE_SIZE / 2)
         diff = target_pixel - self.pos
         if diff.magnitude() < 15:
             self.path_index += 1
@@ -233,7 +240,7 @@ class Monster(Entity):
     def check_hearing(self, player):
         if self.state == 'CHASE': return
         if player.sound_radius > 0:
-            dist = (pygame.math.Vector2(self.rect.center) - pygame.math.Vector2(player.rect.center)).magnitude()
+            dist = (Vector(self.rect.center) - Vector(player.rect.center)).magnitude()
             if dist <= player.sound_radius: self.hear_sound(player.pos)
 
     def hear_sound(self, sound_pos):
@@ -252,19 +259,24 @@ class Monster(Entity):
                 player.hid = False
                 player.hidable_sprite.has_player = False
         if self.hitbox.colliderect(player.hitbox) and not player.hid:
-            player.end_status = 'lost'
+            self.attacking = True
+            self.player.dying = True
+            self.timers['action'].deactivate()
+            self.direction = Vector()
 
     def animate(self, dt):
         animation_key = f'{self.facing}_{self.status}'
         if animation_key not in self.animations: return
 
-        # Faster animation for attacking
-        speed = 6
-        
-        if (self.direction.magnitude() > 0 and not self.is_blocked):
+        speed = 10 if self.attacking else 6
+
+        if (self.direction.magnitude() > 0 and not self.is_blocked) or self.attacking:
             self.frame_index += speed * dt
             if self.frame_index >= len(self.animations[animation_key]):
-                self.frame_index = 0
+                if self.attacking:
+                    self.frame_index = len(self.animations[animation_key]) - 1
+                else:
+                    self.frame_index = 0
         else:
             self.frame_index = 0
 
