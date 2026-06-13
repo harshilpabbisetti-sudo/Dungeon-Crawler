@@ -36,18 +36,31 @@ def get_path(grid, start, end):
                 return path[::-1] # Return reversed path
             else: return None
             
-        # Neighbors (Up, Down, Left, Right)
-        for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+        # Neighbors (8-way: Orthogonal and Diagonal)
+        for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)]:
             nx, ny = current_node.x + dx, current_node.y + dy
             
             # Check bounds and walls
             if 0 <= nx < len(grid[0]) and 0 <= ny < len(grid) and grid[ny][nx] == 0:
+                # Prevent clipping through corners
+                if dx != 0 and dy != 0:
+                    if grid[current_node.y][nx] != 0 or grid[ny][current_node.x] != 0:
+                        continue
+
                 if (nx, ny) in closed_set:
                     continue
                     
                 neighbor = Node(nx, ny, current_node)
-                neighbor.g = current_node.g + 1
-                neighbor.h = abs(neighbor.x - end_node.x) + abs(neighbor.y - end_node.y)
+                
+                # Movement cost: 1 for orthogonal, ~1.414 for diagonal
+                move_cost = 1.414 if (dx != 0 and dy != 0) else 1
+                neighbor.g = current_node.g + move_cost
+                
+                # Octile distance heuristic for 8-way movement
+                h_dx = abs(neighbor.x - end_node.x)
+                h_dy = abs(neighbor.y - end_node.y)
+                neighbor.h = max(h_dx, h_dy) + (1.414 - 1) * min(h_dx, h_dy)
+                
                 neighbor.f = neighbor.g + neighbor.h
                 
                 # Check if this node is already in open list with a lower cost

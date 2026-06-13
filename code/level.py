@@ -9,6 +9,8 @@ from monster import Monster
 from debug import *
 from hiding_obj import Hiding_Obj
 
+Vector = pygame.math.Vector2
+
 
 class Level:
 	def __init__(self):
@@ -127,6 +129,8 @@ class CameraGroup(pygame.sprite.Group):
 					elif sprite.state == 'CHASE':
 						# chase sign
 						pygame.draw.circle(self.display_surface, 'red', (offset_rect.centerx, offset_rect.top - 10), 5)
+
+					path_visualization(sprite, self.display_surface, self.offset, True)
 
 				# for player
 				if isinstance(sprite, Player) and sprite.hid:
