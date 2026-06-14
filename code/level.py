@@ -77,6 +77,10 @@ class Level:
 	def run(self, dt):
 		self.display_surface.fill('black')
 		self.all_sprites.update(dt)
+
+		# Update fog based on mode (room_based=True reveals whole rooms)
+		self.all_sprites.update_fog(self.player, self.dungeon.rooms, room_based=True)
+		
 		self.all_sprites.custom_draw(self.player)
 
 		# Draw and update fade-in overlay
@@ -101,6 +105,55 @@ class CameraGroup(pygame.sprite.Group):
 		self.floor_surface = None
 		self.vision_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
 		self.display_rect = self.display_surface.get_rect()
+
+		# Fog of War setup
+		self.fog_unexplored = None
+		self.fog_dynamic = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+		
+		# Vision mask (Dynamic flashlight - 300px)
+		self.light_radius = 300
+		self.light_mask = pygame.Surface((self.light_radius * 2, self.light_radius * 2), pygame.SRCALPHA)
+		self.light_mask.fill((255, 255, 255, 255))
+		pygame.draw.circle(self.light_mask, (255, 255, 255, 0), (self.light_radius, self.light_radius), self.light_radius)
+
+		# Discovery mask (Persistent map reveal - 120px)
+		# Smaller to prevent bleeding into adjacent rooms through walls
+		self.discovery_radius = 120
+		self.discovery_mask = pygame.Surface((self.discovery_radius * 2, self.discovery_radius * 2), pygame.SRCALPHA)
+		self.discovery_mask.fill((255, 255, 255, 255))
+		pygame.draw.circle(self.discovery_mask, (255, 255, 255, 0), (self.discovery_radius, self.discovery_radius), self.discovery_radius)
+
+	def update_fog(self, player, rooms, room_based=False):
+		# Initialize fog map once floor is ready
+		if self.floor_surface and self.fog_unexplored is None:
+			self.fog_unexplored = pygame.Surface(self.floor_surface.get_size(), pygame.SRCALPHA)
+			self.fog_unexplored.fill((0, 0, 0, 255))
+
+		if self.fog_unexplored:
+			if room_based:
+				# Find which room the player is in
+				player_grid_x = int(player.rect.centerx // TILE_SIZE)
+				player_grid_y = int(player.rect.centery // TILE_SIZE)
+				
+				for room in rooms:
+					if (room['x'] <= player_grid_x < room['x'] + room['w'] and 
+						room['y'] <= player_grid_y < room['y'] + room['h']):
+						# Reveal the entire room (including walls slightly for better visuals)
+						room_rect = pygame.Rect(
+							(room['x'] - 1) * TILE_SIZE, 
+							(room['y'] - 1) * TILE_SIZE, 
+							(room['w'] + 2) * TILE_SIZE, 
+							(room['h'] + 2) * TILE_SIZE
+						)
+						pygame.draw.rect(self.fog_unexplored, (255, 255, 255, 0), room_rect)
+
+			# 1. Update persistent map using the SMALLER discovery mask
+			# This prevents the map from revealing neighboring rooms through walls
+			self.fog_unexplored.blit(self.discovery_mask, (player.rect.centerx - self.discovery_radius, player.rect.centery - self.discovery_radius), special_flags=pygame.BLEND_RGBA_MIN)
+
+			# 2. Update dynamic flashlight (dim visited areas)
+			self.fog_dynamic.fill((0, 0, 0, 180))
+			self.fog_dynamic.blit(self.light_mask, (player.rect.centerx - self.offset.x - self.light_radius, player.rect.centery - self.offset.y - self.light_radius), special_flags=pygame.BLEND_RGBA_MIN)
 
 	def custom_draw(self, player):
 		self.offset.x = player.rect.centerx - SCREEN_WIDTH / 2
@@ -130,7 +183,8 @@ class CameraGroup(pygame.sprite.Group):
 						# chase sign
 						pygame.draw.circle(self.display_surface, 'red', (offset_rect.centerx, offset_rect.top - 10), 5)
 
-					path_visualization(sprite, self.display_surface, self.offset, True)
+					# # for path visualization
+					# path_visualization(sprite, self.display_surface, self.offset, True)
 
 				# for player
 				if isinstance(sprite, Player) and sprite.hid:
@@ -142,3 +196,8 @@ class CameraGroup(pygame.sprite.Group):
 				# debug_rect(sprite, player, offset_rect)
 		
 		self.display_surface.blit(self.vision_surf, (0, 0))
+
+		# Fog of War Rendering
+		if self.fog_unexplored:
+			self.display_surface.blit(self.fog_dynamic, (0, 0))
+			self.display_surface.blit(self.fog_unexplored, (0, 0), screen_rect)

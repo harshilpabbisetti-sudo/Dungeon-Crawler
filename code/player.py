@@ -39,8 +39,9 @@ class Player(Entity):
         self.hid = False
         self.hidable_sprite = None
 
-        # timer
+        # timers
         self.key_timer = Timer(500)
+        self.hiding_sound_timer = Timer(200)
 
     def import_assets(self):
         self.animations = {}
@@ -55,9 +56,8 @@ class Player(Entity):
     def hiding(self):
         collided_sprite = pygame.sprite.spritecollideany(self, self.hideable_sprites)
         if collided_sprite:
-            # Check if anyone sees us BEFORE we hide
-            if not self.hid:
-                self.level.notify_monsters_of_hiding(self.pos)
+            # Check if anyone sees us (Entering OR Exiting)
+            self.level.notify_monsters_of_hiding(self.pos)
 
             self.hid = not self.hid
             if not self.hidable_sprite:
@@ -67,7 +67,10 @@ class Player(Entity):
             collided_sprite.has_player = not collided_sprite.has_player
             self.pos = Vector(collided_sprite.rect.center)
             self.direction = Vector(0, 0)
+            
+            # Trigger hiding sound
             self.sound_radius = SOUND_RADIUS['hiding']
+            self.hiding_sound_timer.activate()
 
     def input(self, keys):
         # hiding
@@ -124,6 +127,10 @@ class Player(Entity):
         self.image = self.animations[animation_key][int(self.frame_index)]
 
     def update_sound_radius(self):
+        if self.hiding_sound_timer.active:
+            self.sound_radius = SOUND_RADIUS['hiding']
+            return
+
         if self.status == 'Run':
             if self.speed == 300: # Running with LALT
                 self.sound_radius = SOUND_RADIUS['run']
@@ -146,5 +153,6 @@ class Player(Entity):
             self.move(dt)
         
         self.animate(dt)
+        self.hiding_sound_timer.update()
         self.update_sound_radius()
         self.game_end()
