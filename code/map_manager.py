@@ -3,8 +3,7 @@ from settings import *
 from support import load_and_upscale_sprite
 
 class MapManager:
-	def __init__(self, all_sprites):
-		self.all_sprites = all_sprites
+	def __init__(self):
 		self.load_floor_graphics()
 
 	def load_floor_graphics(self):

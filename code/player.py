@@ -119,7 +119,8 @@ class Player(Entity):
         self.frame_index += 7 * dt
         if self.frame_index >= len(self.animations[animation_key]):
             if self.dying:
-                self.frame_index = len(self.animations[animation_key]) - 1
+                self.frame_index = len(self.animations[animation_key])-1
+                animation_key = f'{self.facing}_Death'
                 self.end_status = 'lost'
             else:
                 self.frame_index = 0
