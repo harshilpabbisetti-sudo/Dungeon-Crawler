@@ -21,19 +21,19 @@ class Level:
 		self.hideable_sprite = pygame.sprite.Group()
 
 		# setup
-		self.dungeon = DungeonGenerator(50, 50)
+		self.dungeon = DungeonGenerator(GRID_WIDTH, GRID_HEIGHT)
 		self.grid = self.dungeon.generate()
 		self.static_edges = self.dungeon.get_static_edges()
 		self.map_manager = MapManager()
+
+		# create the ground
+		self.all_sprites.floor_surface = self.map_manager.create_map(self.grid, self.dungeon)
 
 		# Fade-in setup
 		self.fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 		self.fade_surface.fill('black')
 		self.fade_alpha = 255.0
 		self.fade_speed = 200.0
-
-		# create the ground
-		self.all_sprites.floor_surface = self.map_manager.create_map(self.grid, self.dungeon)
 
 		# spawn player in the center of the first room
 		if self.dungeon.rooms:
@@ -58,7 +58,6 @@ class Level:
 
 						if self.grid[pos[1]+1][pos[0]] or self.grid[pos[1]-1][pos[0]] or self.grid[pos[1]][pos[0]+1] or self.grid[pos[1]][pos[0]-1]:
 							Hiding_Obj(hideable_type, (pos[0] * TILE_SIZE, pos[1] * TILE_SIZE), [self.all_sprites, self.hideable_sprite])
-							continue
 
 				# monsters
 				if random.choice([True, False]):

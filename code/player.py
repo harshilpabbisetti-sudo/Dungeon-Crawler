@@ -8,152 +8,152 @@ Vector = pygame.math.Vector2
 
 
 class Player(Entity):
-    def __init__(self, pos, group, dungeon, hideable_sprites, level):
-        super().__init__(pos, group, dungeon.grid)
+	def __init__(self, pos, group, dungeon, hideable_sprites, level):
+		super().__init__(pos, group, dungeon.grid)
 
-        self.import_assets()
-        self.status = "Idle"
-        self.facing = "Down"
+		self._import_assets()
+		self.status = "Idle"
+		self.facing = "Down"
 
-        # general setup
-        self.image = self.animations[f'{self.facing}_{self.status}'][self.frame_index]
-        self.rect = self.image.get_rect(center=pos)
-        self.hitbox = pygame.Rect(0, 0, 25, 50)
-        self.hitbox.center = self.rect.center
-        self.hideable_sprites = hideable_sprites
-        self.level = level
+		# general setup
+		self.image = self.animations[f'{self.facing}_{self.status}'][self.frame_index]
+		self.rect = self.image.get_rect(center=pos)
+		self.hitbox = pygame.Rect(0, 0, 25, 50)
+		self.hitbox.center = self.rect.center
+		self.hideable_sprites = hideable_sprites
+		self.level = level
 
-        # Combat attributes
-        self.sound_radius = 0
-        self.dying = False
+		# Combat attributes
+		self.sound_radius = 0
+		self.dying = False
 
-        # exit
-        exit_pos = dungeon.rooms[-1]['center']
-        self.exit_rect = pygame.Rect(0, 0, TILE_SIZE, TILE_SIZE)
-        self.exit_rect.center = (exit_pos[0] * TILE_SIZE, exit_pos[1] * TILE_SIZE)
+		# exit
+		exit_pos = dungeon.rooms[-1]['center']
+		self.exit_rect = pygame.Rect(0, 0, TILE_SIZE, TILE_SIZE)
+		self.exit_rect.center = (exit_pos[0] * TILE_SIZE, exit_pos[1] * TILE_SIZE)
 
-        # end
-        self.end_status = None
+		# end
+		self.end_status = None
 
-        # hiding
-        self.hid = False
-        self.hidable_sprite = None
+		# hiding
+		self.hid = False
+		self.hidable_sprite = None
 
-        # timers
-        self.key_timer = Timer(500)
-        self.hiding_sound_timer = Timer(200)
+		# timers
+		self.timers = {'key_timer': Timer(500), 'hiding_sound_timer': Timer(200)}
 
-    def import_assets(self):
-        self.animations = {}
-        directions = ['Down', 'Up', 'Left', 'Right']
-        states = ['Idle', 'Run', 'Death']
+	def update(self, dt):
+		keys = pygame.key.get_pressed()
+		self._input(keys)
+		self._get_status()
 
-        for direction in directions:
-            for state in states:
-                full_path = f'graphics/Player/{direction}_{state}.png'
-                self.animations[f'{direction}_{state}'] = load_and_scale_sprite_sheet(full_path, 64, 64, 2)
+		if not self.dying:
+			self._move(dt)
 
-    def hiding(self):
-        collided_sprite = pygame.sprite.spritecollideany(self, self.hideable_sprites)
-        if collided_sprite:
-            # Check if anyone sees us (Entering OR Exiting)
-            self.level.notify_monsters_of_hiding(self.pos)
+		self._animate(dt)
+		for i in self.timers.keys():
+			self.timers[i].update()
+		self._update_sound_radius()
+		self._game_end()
 
-            self.hid = not self.hid
-            if not self.hidable_sprite:
-                self.hidable_sprite = collided_sprite
-            else:
-                self.hidable_sprite = None
-            collided_sprite.has_player = not collided_sprite.has_player
-            self.pos = Vector(collided_sprite.rect.center)
-            self.direction = Vector(0, 0)
-            
-            # Trigger hiding sound
-            self.sound_radius = SOUND_RADIUS['hiding']
-            self.hiding_sound_timer.activate()
+	def _import_assets(self):
+		self.animations = {}
+		directions = ['Down', 'Up', 'Left', 'Right']
+		states = ['Idle', 'Run', 'Death']
 
-    def input(self, keys):
-        # hiding
-        if keys[pygame.K_f] and not self.key_timer.active:
-            self.hiding()
-            self.key_timer.activate()
-        self.key_timer.update()
+		for direction in directions:
+			for state in states:
+				full_path = f'graphics/Player/{direction}_{state}.png'
+				self.animations[f'{direction}_{state}'] = load_and_scale_sprite_sheet(full_path, 64, 64, 2)
 
-        # movement
-        if not self.hid and not self.dying:
-            self.speed = 200
-            
-            # Movement input
-            if keys[pygame.K_UP] or keys[pygame.K_w]:
-                self.direction.y = -1
-                self.facing = 'Up'
-            elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
-                self.direction.y = 1
-                self.facing = 'Down'
-            else:
-                self.direction.y = 0
+	def _input(self, keys):
+		# hiding
+		if keys[pygame.K_f] and not self.timers['key_timer'].active:
+			self._hiding()
+			self.timers['key_timer'].activate()
 
-            if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-                self.direction.x = 1
-                self.facing = 'Right'
-            elif keys[pygame.K_LEFT] or keys[pygame.K_a]:
-                self.direction.x = -1
-                self.facing = 'Left'
-            else:
-                self.direction.x = 0
-        
-    def get_status(self, keys):
-        if self.dying:
-            self.status = 'Death'
-        elif self.direction.magnitude() == 0:
-            self.status = 'Idle'
-        else:
-            self.status = 'Run'
-            if keys[pygame.K_LALT]:
-             self.speed = 300
+		# movement
+		if not self.hid and not self.dying:
+			self.speed = 200
 
-    def animate(self, dt):
-        animation_key = f'{self.facing}_{self.status}'
+			# Movement input
+			if keys[pygame.K_UP] or keys[pygame.K_w]:
+				self.direction.y = -1
+				self.facing = 'Up'
+			elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
+				self.direction.y = 1
+				self.facing = 'Down'
+			else:
+				self.direction.y = 0
 
-        # Animation loop
-        self.frame_index += 7 * dt
-        if self.frame_index >= len(self.animations[animation_key]):
-            if self.dying:
-                self.frame_index = len(self.animations[animation_key])-1
-                animation_key = f'{self.facing}_Death'
-                self.end_status = 'lost'
-            else:
-                self.frame_index = 0
+			if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+				self.direction.x = 1
+				self.facing = 'Right'
+			elif keys[pygame.K_LEFT] or keys[pygame.K_a]:
+				self.direction.x = -1
+				self.facing = 'Left'
+			else:
+				self.direction.x = 0
 
-        self.image = self.animations[animation_key][int(self.frame_index)]
+			if keys[pygame.K_LALT]:
+				self.speed = 300
 
-    def update_sound_radius(self):
-        if self.hiding_sound_timer.active:
-            self.sound_radius = SOUND_RADIUS['hiding']
-            return
+	def _get_status(self):
+		if self.dying:
+			self.status = 'Death'
+		elif self.direction.magnitude() == 0:
+			self.status = 'Idle'
+		else:
+			self.status = 'Run'
 
-        if self.status == 'Run':
-            if self.speed == 300: # Running with LALT
-                self.sound_radius = SOUND_RADIUS['run']
-            else: # Normal walking
-                self.sound_radius = 100
-        else:
-            self.sound_radius = 0
+	def _animate(self, dt):
+		animation_key = f'{self.facing}_{self.status}'
 
-    def game_end(self):
-        if self.exit_rect.colliderect(self.hitbox):
-            self.end_status = 'win'
-        # lost decided in self.animate()
+		# Animation loop
+		self.frame_index += 7 * dt
+		if self.frame_index >= len(self.animations[animation_key]):
+			if self.dying:
+				self.frame_index = len(self.animations[animation_key]) - 1
+				animation_key = f'{self.facing}_Death'
+				self.end_status = 'lost'
+			else:
+				self.frame_index = 0
 
-    def update(self, dt):
-        keys = pygame.key.get_pressed()
-        self.input(keys)
-        self.get_status(keys)
+		self.image = self.animations[animation_key][int(self.frame_index)]
 
-        if not self.dying:
-            self.move(dt)
-        
-        self.animate(dt)
-        self.hiding_sound_timer.update()
-        self.update_sound_radius()
-        self.game_end()
+	def _update_sound_radius(self):
+		if self.timers['hiding_sound_timer'].active:
+			self.sound_radius = SOUND_RADIUS['hiding']
+			return
+
+		if self.status == 'Run':
+			if self.speed == 300:  # Running with LALT
+				self.sound_radius = SOUND_RADIUS['run']
+			else:  # Normal walking
+				self.sound_radius = 100
+		else:
+			self.sound_radius = 0
+
+	def _game_end(self):
+		if self.exit_rect.colliderect(self.hitbox):
+			self.end_status = 'win'
+		# lost decided in self._animate()
+
+	def _hiding(self):
+		collided_sprite = pygame.sprite.spritecollideany(self, self.hideable_sprites)
+		if collided_sprite:
+			# Check if anyone sees us (Entering OR Exiting)
+			self.level.notify_monsters_of_hiding(self.pos)
+
+			self.hid = not self.hid
+			if not self.hidable_sprite:
+				self.hidable_sprite = collided_sprite
+			else:
+				self.hidable_sprite = None
+			collided_sprite.has_player = not collided_sprite.has_player
+			self.pos = Vector(collided_sprite.rect.center)
+			self.direction = Vector(0, 0)
+
+			# Trigger hiding sound
+			self.sound_radius = SOUND_RADIUS['hiding']
+			self.timers['hiding_sound_timer'].activate()
