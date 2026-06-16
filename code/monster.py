@@ -3,7 +3,7 @@ import random
 import math
 import json
 from settings import *
-from support import load_and_scale_sprite_sheet
+from support import load_and_scale_sprite_sheet, get_abs_path
 from timer import Timer
 from entity import Entity
 from astar import get_path
@@ -163,7 +163,7 @@ class Monster(Entity):
 
         # Load monster data if not already loaded
         if Monster.data is None:
-            with open('code/monsters.json', 'r') as f:
+            with open(get_abs_path('code/monsters.json'), 'r') as f:
                 Monster.data = json.load(f)
 
         # general setup

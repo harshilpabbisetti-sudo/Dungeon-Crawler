@@ -30,7 +30,14 @@ def get_abs_path(path):
 	return os.path.join(game_folder_path, path)
 
 
+_asset_cache = {}
+
+
 def import_scaled_folder(path, scale=1):
+	cache_key = ("folder", path, scale)
+	if cache_key in _asset_cache:
+		return _asset_cache[cache_key]
+
 	surface_list = []
 
 	for _, __, img_files in walk(path):
@@ -42,10 +49,15 @@ def import_scaled_folder(path, scale=1):
 			image_surf = pygame.transform.scale(image_surf, (orig_width * scale, orig_height * scale))
 			surface_list.append(image_surf)
 
+	_asset_cache[cache_key] = surface_list
 	return surface_list
 
 
 def load_and_upscale_sprite(path, scale_factor=4):
+	cache_key = ("upscale", path, scale_factor)
+	if cache_key in _asset_cache:
+		return _asset_cache[cache_key]
+
 	path = get_abs_path(path)
 
 	# Load the original tiny sheet
@@ -59,10 +71,15 @@ def load_and_upscale_sprite(path, scale_factor=4):
 	# Scale the entire sheet up at once using nearest neighbor
 	upscaled_sheet = pygame.transform.scale(original_sheet, (new_width, new_height))
 
+	_asset_cache[cache_key] = upscaled_sheet
 	return upscaled_sheet
 
 
 def load_and_scale_sprite_sheet(path, orig_width, orig_height, scale=1):
+	cache_key = ("sheet", path, orig_width, orig_height, scale)
+	if cache_key in _asset_cache:
+		return _asset_cache[cache_key]
+
 	path = get_abs_path(path)
 
 	# Load the big image
@@ -84,4 +101,5 @@ def load_and_scale_sprite_sheet(path, orig_width, orig_height, scale=1):
 			scaled_frame = pygame.transform.scale(frame_surf, (orig_width * scale, orig_height * scale))
 			frames.append(scaled_frame.convert_alpha())
 
+	_asset_cache[cache_key] = frames
 	return frames
