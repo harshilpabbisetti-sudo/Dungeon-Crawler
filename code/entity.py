@@ -15,7 +15,7 @@ class Entity(pygame.sprite.Sprite):
         # Movement attributes
         self.direction = pygame.math.Vector2()
         self.pos = pygame.math.Vector2(pos)
-        self.speed = 200
+        self.speed = PLAYER_SPEED
         
         # Collision
         self.grid = grid
@@ -75,7 +75,7 @@ class Entity(pygame.sprite.Sprite):
 
         # Check if we are blocked (movement was negligible)
         # Using a tiny epsilon to handle float precision
-        if (self.pos - old_pos).magnitude() < 0.1 and self.direction.magnitude() > 0:
+        if (self.pos - old_pos).magnitude() < BLOCKED_THRESHOLD and self.direction.magnitude() > 0:
             self.is_blocked = True
         else:
             self.is_blocked = False

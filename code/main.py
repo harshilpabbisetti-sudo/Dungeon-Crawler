@@ -15,8 +15,7 @@ class Game:
 		# state management
 		self.state = 'PLAY'
 		self.level = Level()
-		self.win_screen = End('win')
-		self.lose_screen = End('lost')
+		self.end_screen = None
 
 	def run(self):
 		while True:
@@ -30,22 +29,21 @@ class Game:
 					if event.key == pygame.K_SPACE:
 						self.level = Level()
 						self.state = 'PLAY'
+						self.end_screen = None
 
 			dt = self.clock.tick() / 1000
 			
 			if self.state == 'PLAY':
 				self.level.run(dt)
 				# transition check
-				if self.level.player.end_status == 'win':
-					self.state = 'WIN'
-				elif self.level.player.end_status == 'lost':
-					self.state = 'LOST'
+				if self.level.player.end_status:
+					final_time = self.level.clock.stopwatch.calculate_time()
+					self.end_screen = End(self.level.player.end_status, final_time)
+					self.state = self.level.player.end_status.upper()
 			
-			elif self.state == 'WIN':
-				self.win_screen.run(dt)
-			
-			elif self.state == 'LOST':
-				self.lose_screen.run(dt)
+			else:
+				if self.end_screen:
+					self.end_screen.run(dt)
 
 			pygame.display.update()
 

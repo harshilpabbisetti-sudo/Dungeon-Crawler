@@ -1,6 +1,7 @@
 import pygame
 import random
 import math
+import json
 from settings import *
 from support import load_and_scale_sprite_sheet
 from timer import Timer
@@ -103,7 +104,7 @@ class VisionCone:
         if abs(diff) > half_fov: return False
 
         hit_dist = self.ray_cast(self.owner.rect.center, target_pos)
-        if hit_dist is not None and hit_dist < dist - 5:
+        if hit_dist is not None and hit_dist < dist - MONSTER_DETECTION_BUFFER:
             return False
 
         return True
@@ -154,12 +155,30 @@ class VisionCone:
 
 
 class Monster(Entity):
+    # Class-level cache for monster data
+    data = None
 
     def __init__(self, pos, group, grid, monster_type, static_edges, player, hideable_sprites):
         super().__init__(pos, group, grid)
 
+        # Load monster data if not already loaded
+        if Monster.data is None:
+            with open('code/monsters.json', 'r') as f:
+                Monster.data = json.load(f)
+
         # general setup
-        self.monster_type, self.player, self.hideable_sprites = monster_type, player, hideable_sprites
+        self.monster_type = monster_type
+        self.monster_stats = Monster.data[monster_type]
+        self.player = player
+        self.hideable_sprites = hideable_sprites
+
+        # stats
+        self.speed = self.monster_stats['speed']
+        self.chase_speed = self.monster_stats['chase_speed']
+        self.vision_radius = self.monster_stats['vision_radius']
+        self.vision_angle = self.monster_stats['vision_angle']
+        self.anim_speed_walk = self.monster_stats['animation_speed']
+        self.anim_speed_attack = self.monster_stats.get('attack_speed', self.anim_speed_walk)
 
         # graphics
         self._import_assets()
@@ -171,11 +190,11 @@ class Monster(Entity):
         self.rect = self.image.get_rect(center=pos)
 
         # collisions
-        self.hitbox = pygame.Rect(0, 0, 30, 50)
+        hitbox_size = self.monster_stats['hitbox']
+        self.hitbox = pygame.Rect(0, 0, hitbox_size[0], hitbox_size[1])
         self.hitbox.center = self.rect.center
 
         # monster AI
-        self.speed = 100
         self.player_last_grid_pos = None
         self.forcing_chase = False
         self.attacking = False
@@ -185,7 +204,8 @@ class Monster(Entity):
         self.timers['action'].activate()
 
         # vision
-        self.vision = VisionCone(self, VISION_RADIUS, VISION_ANGLE, static_edges, hideable_sprites)
+        self.vision = VisionCone(self, self.vision_radius, self.vision_angle, static_edges, hideable_sprites)
+
     def update(self, dt):
         for timer in self.timers.values(): timer.update()
         self._check_vision(self.player)
@@ -211,11 +231,14 @@ class Monster(Entity):
     def _import_assets(self):
         self.animations = {}
         directions = {'D': 'Down', 'U': 'Up', 'L': 'Left', 'R': 'Right'}
-        states = ['Walk', 'Attack']
+        states = self.monster_stats['states']
         for prefix, direction in directions.items():
             for state in states:
                 full_path = f'graphics/Monsters/{self.monster_type}/{prefix}_{state}.png'
-                self.animations[f'{direction}_{state}'] = load_and_scale_sprite_sheet(full_path, 48, 48, 2)
+                try:
+                    self.animations[f'{direction}_{state}'] = load_and_scale_sprite_sheet(full_path, 48, 48, 2)
+                except FileNotFoundError:
+                    continue
 
     def _change_action(self):
         if self.state == 'CHASE' or self.state == 'INSPECT': return
@@ -281,14 +304,14 @@ class Monster(Entity):
         target_grid = self.path[self.path_index]
         target_pixel = Vector(target_grid[0] * TILE_SIZE + TILE_SIZE / 2, target_grid[1] * TILE_SIZE + TILE_SIZE / 2)
         diff = target_pixel - self.pos
-        if diff.magnitude() < 15:
+        if diff.magnitude() < MONSTER_PATH_THRESHOLD:
             self.path_index += 1
             return self._follow_path()
         self.direction = diff.normalize()
         return False
 
     def _chase_player(self):
-        self.speed = 180
+        self.speed = self.chase_speed
 
         # 1. Direct pursuit if player is in line of sight AND body has clearance
         if self.vision.check_detection(self.player.pos) and self._has_line_of_sight(self.player.pos):
@@ -320,7 +343,7 @@ class Monster(Entity):
         animation_key = f'{self.facing}_{self.status}'
         if animation_key not in self.animations: return
 
-        speed = 10 if self.attacking else 6
+        speed = self.anim_speed_attack if self.attacking else self.anim_speed_walk
 
         if (self.direction.magnitude() > 0 and not self.is_blocked) or self.attacking:
             self.frame_index += speed * dt
@@ -335,7 +358,7 @@ class Monster(Entity):
         self.image = self.animations[animation_key][int(self.frame_index)]
 
     def _stop_chase(self):
-        self.state, self.speed, self.forcing_chase = 'INSPECT', 100, False
+        self.state, self.speed, self.forcing_chase = 'INSPECT', self.monster_stats['speed'], False
         # Path is already pointing to player's last position
         self.timers['action'].deactivate()
 
@@ -344,9 +367,9 @@ class Monster(Entity):
         dist = dist_vec.magnitude()
         if dist < 5: return True
 
-        # Thick Raycasting: Check 5 parallel rays to cover the monster's 50px height
+        # Thick Raycasting: Check 5 parallel rays to cover the monster's height
         dir_vec = dist_vec.normalize()
-        ortho = Vector(-dir_vec.y, dir_vec.x) * 26 # Covers 52px width beam (50px height + padding)
+        ortho = Vector(-dir_vec.y, dir_vec.x) * MONSTER_THICK_RAY_OFFSET # Covers width beam
 
         # Check 5 points across the monster's width/height
         for offset_factor in [-1.0, -0.5, 0.0, 0.5, 1.0]:
@@ -355,7 +378,7 @@ class Monster(Entity):
             # Target is also offset to keep rays perfectly parallel
             target = Vector(target_pos) + offset
             hit_dist = self.vision.ray_cast(origin, target, self.vision.static_edges)
-            if hit_dist is not None and hit_dist < dist - 10:
+            if hit_dist is not None and hit_dist < dist - MONSTER_LOS_BUFFER:
                 return False
         return True
 

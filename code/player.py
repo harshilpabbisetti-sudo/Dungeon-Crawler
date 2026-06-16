@@ -18,7 +18,7 @@ class Player(Entity):
 		# general setup
 		self.image = self.animations[f'{self.facing}_{self.status}'][self.frame_index]
 		self.rect = self.image.get_rect(center=pos)
-		self.hitbox = pygame.Rect(0, 0, 25, 50)
+		self.hitbox = pygame.Rect(0, 0, PLAYER_HITBOX_SIZE[0], PLAYER_HITBOX_SIZE[1])
 		self.hitbox.center = self.rect.center
 		self.hideable_sprites = hideable_sprites
 		self.level = level
@@ -74,7 +74,7 @@ class Player(Entity):
 
 		# movement
 		if not self.hid and not self.dying:
-			self.speed = 200
+			self.speed = PLAYER_SPEED
 
 			# Movement input
 			if keys[pygame.K_UP] or keys[pygame.K_w]:
@@ -96,7 +96,7 @@ class Player(Entity):
 				self.direction.x = 0
 
 			if keys[pygame.K_LALT]:
-				self.speed = 300
+				self.speed = PLAYER_RUN_SPEED
 
 	def _get_status(self):
 		if self.dying:
@@ -110,7 +110,7 @@ class Player(Entity):
 		animation_key = f'{self.facing}_{self.status}'
 
 		# Animation loop
-		self.frame_index += 7 * dt
+		self.frame_index += PLAYER_ANIMATION_SPEED * dt
 		if self.frame_index >= len(self.animations[animation_key]):
 			if self.dying:
 				self.frame_index = len(self.animations[animation_key]) - 1
@@ -127,10 +127,10 @@ class Player(Entity):
 			return
 
 		if self.status == 'Run':
-			if self.speed == 300:  # Running with LALT
+			if self.speed == PLAYER_RUN_SPEED:  # Running with LALT
 				self.sound_radius = SOUND_RADIUS['run']
 			else:  # Normal walking
-				self.sound_radius = 100
+				self.sound_radius = SOUND_RADIUS['walk']
 		else:
 			self.sound_radius = 0
 

@@ -1,0 +1,32 @@
+{
+    "wolf": {
+        "speed": 100,
+        "chase_speed": 180,
+        "vision_radius": 200,
+        "vision_angle": 90,
+        "animation_speed": 6,
+        "attack_speed": 10,
+        "hitbox": [30, 50],
+        "states": ["Walk", "Attack"]
+    },
+    "goblin": {
+        "speed": 120,
+        "chase_speed": 220,
+        "vision_radius": 180,
+        "vision_angle": 110,
+        "animation_speed": 8,
+        "attack_speed": 12,
+        "hitbox": [25, 40],
+        "states": ["Walk", "Attack"]
+    },
+    "bee": {
+        "speed": 150,
+        "chase_speed": 250,
+        "vision_radius": 300,
+        "vision_angle": 360,
+        "animation_speed": 12,
+        "attack_speed": 15,
+        "hitbox": [20, 20],
+        "states": ["Walk"]
+    }
+}

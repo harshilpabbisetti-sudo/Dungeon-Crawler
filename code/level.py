@@ -8,6 +8,8 @@ from player import Player
 from monster import Monster
 from debug import *
 from hiding_obj import Hiding_Obj
+from timer import *
+from stopwatch import *
 
 Vector = pygame.math.Vector2
 
@@ -33,7 +35,7 @@ class Level:
 		self.fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 		self.fade_surface.fill('black')
 		self.fade_alpha = 255.0
-		self.fade_speed = 200.0
+		self.fade_speed = FADE_SPEED
 
 		# spawn player in the center of the first room
 		if self.dungeon.rooms:
@@ -73,6 +75,9 @@ class Level:
 								monster_pos = (grid_x * TILE_SIZE, grid_y * TILE_SIZE)
 								Monster(monster_pos, self.all_sprites, self.grid, monster_type, self.static_edges, self.player, self.hideable_sprite)
 
+		# Clock
+		self.clock = Clock()
+
 	def run(self, dt):
 		self.display_surface.fill('black')
 		self.all_sprites.update(dt)
@@ -88,6 +93,8 @@ class Level:
 			if self.fade_alpha < 0: self.fade_alpha = 0
 			self.fade_surface.set_alpha(int(self.fade_alpha))
 			self.display_surface.blit(self.fade_surface, (0, 0))
+
+		self.clock.display()
 
 	def notify_monsters_of_hiding(self, player_pos):
 		for sprite in self.all_sprites:
@@ -109,8 +116,8 @@ class CameraGroup(pygame.sprite.Group):
 		self.fog_unexplored = None
 		self.fog_dynamic = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
 
-		# Vision mask (Dynamic flashlight - 300px)
-		self.light_radius = 300
+		# Vision mask (Dynamic flashlight)
+		self.light_radius = LIGHT_RADIUS
 		self.light_mask = pygame.Surface((self.light_radius * 2, self.light_radius * 2), pygame.SRCALPHA)
 		self.light_mask.fill((255, 255, 255, 255))
 		pygame.draw.circle(self.light_mask, (255, 255, 255, 0), (self.light_radius, self.light_radius), self.light_radius)
@@ -121,9 +128,9 @@ class CameraGroup(pygame.sprite.Group):
 			self.fog_unexplored = pygame.Surface(self.floor_surface.get_size(), pygame.SRCALPHA)
 			self.fog_unexplored.fill((0, 0, 0, 255))
 
-			# Discovery mask (Persistent map reveal - 120px)
+			# Discovery mask (Persistent map reveal)
 			# Smaller to prevent bleeding into adjacent rooms through walls
-			self.discovery_radius = 120 if room_based else 260
+			self.discovery_radius = DISCOVERY_RADIUS_ROOM if room_based else DISCOVERY_RADIUS_FREE
 			self.discovery_mask = pygame.Surface((self.discovery_radius * 2, self.discovery_radius * 2), pygame.SRCALPHA)
 			self.discovery_mask.fill((255, 255, 255, 255))
 			pygame.draw.circle(self.discovery_mask, (255, 255, 255, 0), (self.discovery_radius, self.discovery_radius), self.discovery_radius)
@@ -151,7 +158,7 @@ class CameraGroup(pygame.sprite.Group):
 			self.fog_unexplored.blit(self.discovery_mask, (player.rect.centerx - self.discovery_radius, player.rect.centery - self.discovery_radius), special_flags=pygame.BLEND_RGBA_MIN)
 
 			# 2. Update dynamic flashlight (dim visited areas)
-			self.fog_dynamic.fill((0, 0, 0, 180))
+			self.fog_dynamic.fill((0, 0, 0, DYNAMIC_FOG_ALPHA))
 			self.fog_dynamic.blit(self.light_mask, (player.rect.centerx - self.offset.x - self.light_radius, player.rect.centery - self.offset.y - self.light_radius), special_flags=pygame.BLEND_RGBA_MIN)
 
 	def custom_draw(self, player):
