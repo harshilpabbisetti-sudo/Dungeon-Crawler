@@ -213,6 +213,11 @@ class Monster(Entity):
         # vision
         self.vision = VisionCone(self, self.vision_radius, self.vision_angle, static_edges, hideable_sprites)
 
+        # sounds
+        self.chase_sound = pygame.mixer.Sound(get_abs_path('audio/chase.wav'))
+        self.inspect_sound = pygame.mixer.Sound(get_abs_path('audio/inspect.mp3'))
+        self.inspect_sound.set_volume(2)
+
     def update(self, dt):
         for timer in self.timers.values(): timer.update()
         self._check_vision(self.player)
@@ -234,6 +239,7 @@ class Monster(Entity):
         self.state = 'CHASE'
         self.forcing_chase = True
         self.timers['action'].deactivate()
+        self.chase_sound.play()
 
     def _import_assets(self):
         self.animations = {}
@@ -275,6 +281,7 @@ class Monster(Entity):
             if self.state != 'CHASE':
                 self.state = 'CHASE'
                 self.timers['action'].deactivate()
+                self.chase_sound.play()
 
         if self.state == 'CHASE' and not self.forcing_chase:
             if player.hid and not in_vision:
@@ -405,3 +412,4 @@ class Monster(Entity):
             self.path_index = 1 if len(new_path) > 1 else 0
             self.timers['action'].deactivate()
             self.timers['hear_cooldown'].activate()
+            self.inspect_sound.play()

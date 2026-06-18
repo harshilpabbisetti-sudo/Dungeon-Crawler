@@ -92,6 +92,11 @@ class Level:
 		# Clock
 		self.clock = Clock()
 
+		# audio
+		self.bg_music = pygame.mixer.Sound(get_abs_path('audio/bgm1.ogg'))
+		self.bg_music.set_volume(0.1)
+		self.bg_music.play(loops=-1)
+
 	def run(self, dt):
 		self.display_surface.fill(TILE_SET_CONFIG[TILE_SET]['bg color'])
 		self.all_sprites.update(dt)

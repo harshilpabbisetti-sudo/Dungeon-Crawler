@@ -42,6 +42,9 @@ class Player(Entity):
 		# timers
 		self.timers = {'key_timer': Timer(500), 'hiding_sound_timer': Timer(200)}
 
+		# sound
+		self.hiding_sound = pygame.mixer.Sound(get_abs_path('audio/hide.wav'))
+
 	def update(self, dt):
 		keys = pygame.key.get_pressed()
 		self._input(keys)
@@ -162,3 +165,5 @@ class Player(Entity):
 			# Trigger hiding sound
 			self.sound_radius = SOUND_RADIUS['hiding']
 			self.timers['hiding_sound_timer'].activate()
+
+			self.hiding_sound.play()
