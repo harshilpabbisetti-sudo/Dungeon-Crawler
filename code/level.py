@@ -75,9 +75,10 @@ class Level:
 							Hiding_Obj(hideable_type, (pos[0] * TILE_SIZE, pos[1] * TILE_SIZE), [self.all_sprites, self.hideable_sprite])
 
 				# monsters
-				if random.choice([True]):
+				if random.choice([True, False]):
 					monster_type = random.choice(monster_types)
-					for _ in range(random.randint(2, 6)):
+					spawn_range = Monster.data[monster_type].get('spawn_range', [2, 6])
+					for _ in range(random.randint(spawn_range[0], spawn_range[1])):
 						center_x, center_y = room['center']
 						dx = random.randint(-1, 1)
 						dy = random.randint(-1, 1)
@@ -212,7 +213,7 @@ class CameraGroup(pygame.sprite.Group):
 
 				# # analysis
 				# debug_values(player.key_timer.active, True)
-				debug_rect(sprite, player, offset_rect)
+				# debug_rect(sprite, self.offset)
 
 		self.display_surface.blit(self.vision_surf, (0, 0))
 

@@ -6,13 +6,20 @@ font = pygame.font.Font(None, 30)
 Vector = pygame.math.Vector2
 
 
-def debug_rect(sprite, player, offset_rect, layers=Z_LAYER.values()):
+def debug_rect(sprite, offset, layers=Z_LAYER.values()):
 	if sprite.z in layers:
 		display_surface = pygame.display.get_surface()
-		pygame.draw.rect(display_surface, 'red', offset_rect, 5)
-		hitbox_rect = player.hitbox.copy()
-		hitbox_rect.center = offset_rect.center
-		pygame.draw.rect(display_surface, 'green', hitbox_rect, 5)
+		
+		# Draw the image boundary (Rect) in Red
+		image_rect = sprite.rect.copy()
+		image_rect.center -= offset
+		pygame.draw.rect(display_surface, 'red', image_rect, 2)
+		
+		# Draw the actual collision area (Hitbox) in Green
+		if hasattr(sprite, 'hitbox'):
+			hitbox_rect = sprite.hitbox.copy()
+			hitbox_rect.center -= offset
+			pygame.draw.rect(display_surface, 'green', hitbox_rect, 2)
 
 
 def debug_values(info, bg=False, y=10, x=10):
