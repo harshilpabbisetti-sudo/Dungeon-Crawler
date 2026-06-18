@@ -1,8 +1,11 @@
-import pygame
 import sys
-from settings import *
-from level import Level
+
+import pygame
+
 from end import End
+from level import Level
+from settings import *
+from support import get_abs_path
 
 
 class Game:
@@ -10,6 +13,12 @@ class Game:
 		pygame.init()
 		self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 		pygame.display.set_caption('Dungeon Crawler')
+		
+		# set window icon
+		game_icon = pygame.image.load(get_abs_path('graphics/icon.png'))
+		pygame.display.set_icon(game_icon)
+
+			
 		self.clock = pygame.time.Clock()
 		
 		# state management

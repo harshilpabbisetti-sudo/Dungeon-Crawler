@@ -1,7 +1,6 @@
-import pygame
+from entity import Entity
 from settings import *
 from support import *
-from entity import Entity
 from timer import Timer
 
 Vector = pygame.math.Vector2

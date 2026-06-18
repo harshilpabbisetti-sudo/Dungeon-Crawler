@@ -28,7 +28,7 @@ class VisionCone:
         r_sq = self.radius ** 2
 
         angles = set()
-        arc_steps = 20
+        arc_steps = ARC_STEPS
         for i in range(arc_steps):
             angles.add(base_angle - half_fov + (half_fov * 2 * i) / arc_steps)
 
@@ -37,7 +37,7 @@ class VisionCone:
                 dist_sq = (p[0] - cx)**2 + (p[1] - cy)**2
                 if dist_sq > r_sq + 100: continue
                 angle = math.atan2(p[1] - cy, p[0] - cx)
-                diff = (angle - base_angle + math.pi) % (2 * math.pi) - math.pi
+                diff = (angle - base_angle + math.pi) % (2 * math.pi) - math.pi  # distance formula
                 if abs(diff) <= half_fov:
                     angles.add(angle)
                     angles.add(angle - 0.0001)
@@ -82,6 +82,7 @@ class VisionCone:
         for p1, p2 in edges:
             x1, y1 = p1
             x2, y2 = p2
+            # crammers rule
             denominator = (dx * (y2 - y1) - dy * (x2 - x1))
             if abs(denominator) < 0.0001: continue
             t = ((x1 - ox) * (y2 - y1) - (y1 - oy) * (x2 - x1)) / denominator
@@ -245,7 +246,7 @@ class Monster(Entity):
         self.animations = {}
         directions = {'D': 'Down', 'U': 'Up', 'L': 'Left', 'R': 'Right'}
         states = self.monster_stats['states']
-        
+
         # Calculate scale to reach a consistent size (assuming 96px is the target)
         orig_size = self.monster_stats.get('original_size', 48)
         scale = 96 / orig_size
@@ -283,7 +284,7 @@ class Monster(Entity):
                 self.timers['action'].deactivate()
                 self.chase_sound.play()
 
-        if self.state == 'CHASE' and not self.forcing_chase:
+        if self.state == 'CHASE' and not self.forcing_chase:  # stop chase only if forcing_chase is false
             if player.hid and not in_vision:
                 self._stop_chase()
 

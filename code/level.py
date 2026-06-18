@@ -1,16 +1,13 @@
-import pygame
-import random
-import math
-from settings import *
-from dungeon_gen import DungeonGenerator
-from map_manager import MapManager
-from player import Player
-from monster import Monster
-from debug import *
-from hiding_obj import Hiding_Obj
-from timer import *
-from stopwatch import *
 import os
+import random
+
+from dungeon_gen import DungeonGenerator
+from hiding_obj import Hiding_Obj
+from map_manager import MapManager
+from monster import Monster
+from player import Player
+from stopwatch import *
+from timer import *
 
 Vector = pygame.math.Vector2
 
@@ -38,56 +35,24 @@ class Level:
 		self.fade_alpha = 255.0
 		self.fade_speed = FADE_SPEED
 
-		# spawn player in the center of the first room
+		# spawn player, hideables and monsters
 		if self.dungeon.rooms:
-			# spawn player
+			# spawn player in the center of the first room
 			spawn_x, spawn_y = self.dungeon.rooms[0]['center']
 			self.player = Player((spawn_x * TILE_SIZE, spawn_y * TILE_SIZE), self.all_sprites, self.dungeon, self.hideable_sprite, self)
 
-			# spawn monsters and sprites to hide into in other rooms
 			monster_types = Monster.get_types()
 			
 			# Dynamically discover hideable types from the current TILE_SET
 			hiding_path = get_abs_path(f'graphics/{TILE_SET}/hiding')
-			
-			# Function to get subdirs
-			get_types = lambda p: [d for d in os.listdir(p) if os.path.isdir(os.path.join(p, d))] if os.path.exists(p) else []
-			
+			get_types = lambda p: [d for d in os.listdir(p) if os.path.isdir(os.path.join(p, d))] if os.path.exists(p) else []  # gets names of all subdirectories
 			hideable_types = get_types(hiding_path)
-			
-			# Fallback to type1 if current theme has no hideables
 			if not hideable_types:
-				hideable_types = get_types(get_abs_path('graphics/type1/hiding'))
+				hideable_types = get_types(get_abs_path('graphics/type1/hiding'))  # fallback
 
 			for room in self.dungeon.rooms[1:]:
-				# find valid border positions for hiding objects
-				if hideable_types and random.choice([True, False]):  # need hidables or not
-					hideable_type = random.choice(hideable_types)
-
-					for _ in range(2):
-						if random.choice([True, False]):  # true for top/bottom borders
-							pos = (random.randint(room['x'], room['x'] + room['w'] - 1), random.choice([room['y'], room['y'] + room['h'] - 1]))
-
-						else:
-							pos = (random.choice([room['x'], room['x'] + room['w'] - 1]), random.randint(room['y'], room['y'] + room['h'] - 1))
-
-						if self.grid[pos[1]+1][pos[0]] or self.grid[pos[1]-1][pos[0]] or self.grid[pos[1]][pos[0]+1] or self.grid[pos[1]][pos[0]-1]:
-							Hiding_Obj(hideable_type, (pos[0] * TILE_SIZE, pos[1] * TILE_SIZE), [self.all_sprites, self.hideable_sprite])
-
-				# monsters
-				if random.choice([True, False]):
-					monster_type = random.choice(monster_types)
-					spawn_range = Monster.data[monster_type].get('spawn_range', [2, 6])
-					for _ in range(random.randint(spawn_range[0], spawn_range[1])):
-						center_x, center_y = room['center']
-						dx = random.randint(-1, 1)
-						dy = random.randint(-1, 1)
-						grid_x = center_x + dx
-						grid_y = center_y + dy
-						if 0 <= grid_x < len(self.grid[0]) and 0 <= grid_y < len(self.grid):
-							if self.grid[grid_y][grid_x] == 0:
-								monster_pos = (grid_x * TILE_SIZE, grid_y * TILE_SIZE)
-								Monster(monster_pos, self.all_sprites, self.grid, monster_type, self.static_edges, self.player, self.hideable_sprite)
+				self._spawn_hideables(hideable_types, room)
+				self._spawn_monsters(monster_types, room)
 
 		# Clock
 		self.clock = Clock()
@@ -101,9 +66,10 @@ class Level:
 		self.display_surface.fill(TILE_SET_CONFIG[TILE_SET]['bg color'])
 		self.all_sprites.update(dt)
 
-		# # Update fog based on mode (room_based=True reveals whole rooms)
-		# self.all_sprites.update_fog(self.player, self.dungeon.rooms, room_based=True)
+		# Update fog based on mode (room_based=True reveals whole rooms)
+		self.all_sprites.update_fog(self.player, self.dungeon.rooms, room_based=True)
 
+		# using camera group to draw everything
 		self.all_sprites.custom_draw(self.player)
 
 		# Draw and update fade-in overlay
@@ -120,6 +86,35 @@ class Level:
 			if isinstance(sprite, Monster):
 				if sprite.vision.check_detection(player_pos):
 					sprite.notify_player_hiding()
+
+	def _spawn_hideables(self, hideable_types, room):
+		# find valid border positions for hiding objects
+		if hideable_types and random.choice([True, False]):  # need hidables or not
+			hideable_type = random.choice(hideable_types)
+
+			for _ in range(2):
+				if random.choice([True, False]):  # true for top/bottom borders
+					pos = (random.randint(room['x'], room['x'] + room['w'] - 1), random.choice([room['y'], room['y'] + room['h'] - 1]))
+				else:
+					pos = (random.choice([room['x'], room['x'] + room['w'] - 1]), random.randint(room['y'], room['y'] + room['h'] - 1))
+
+				if self.grid[pos[1] + 1][pos[0]] or self.grid[pos[1] - 1][pos[0]] or self.grid[pos[1]][pos[0] + 1] or self.grid[pos[1]][pos[0] - 1]:
+					Hiding_Obj(hideable_type, (pos[0] * TILE_SIZE, pos[1] * TILE_SIZE), [self.all_sprites, self.hideable_sprite])
+
+	def _spawn_monsters(self, monster_types, room):
+		if random.choice([True, False]):  # to spawn or not
+			monster_type = random.choice(monster_types)
+			spawn_range = Monster.data[monster_type].get('spawn_range', [2, 6])  # [2, 6] is fallback
+			for _ in range(random.randint(spawn_range[0], spawn_range[1])):
+				center_x, center_y = room['center']
+				dx = random.randint(-1, 1)
+				dy = random.randint(-1, 1)
+				grid_x = center_x + dx
+				grid_y = center_y + dy
+				if 0 <= grid_x < len(self.grid[0]) and 0 <= grid_y < len(self.grid):
+					if self.grid[grid_y][grid_x] == 0:
+						monster_pos = (grid_x * TILE_SIZE, grid_y * TILE_SIZE)
+						Monster(monster_pos, self.all_sprites, self.grid, monster_type, self.static_edges, self.player, self.hideable_sprite)
 
 
 class CameraGroup(pygame.sprite.Group):
@@ -145,10 +140,9 @@ class CameraGroup(pygame.sprite.Group):
 		# Initialize fog map and discovery_radius once floor is ready
 		if self.floor_surface and self.fog_unexplored is None:
 			self.fog_unexplored = pygame.Surface(self.floor_surface.get_size(), pygame.SRCALPHA)
-			self.fog_unexplored.fill((0, 0, 0, 255))
+			self.fog_unexplored.fill(TILE_SET_CONFIG[TILE_SET]['bg color'] + (255,))
 
 			# Discovery mask (Persistent map reveal)
-			# Smaller to prevent bleeding into adjacent rooms through walls
 			self.discovery_radius = DISCOVERY_RADIUS_ROOM if room_based else DISCOVERY_RADIUS_FREE
 			self.discovery_mask = pygame.Surface((self.discovery_radius * 2, self.discovery_radius * 2), pygame.SRCALPHA)
 			self.discovery_mask.fill((255, 255, 255, 255))
@@ -162,7 +156,7 @@ class CameraGroup(pygame.sprite.Group):
 
 				for room in rooms:
 					if (room['x'] <= player_grid_x < room['x'] + room['w'] and
-						room['y'] <= player_grid_y < room['y'] + room['h']):
+							room['y'] <= player_grid_y < room['y'] + room['h']):
 						# Reveal the entire room (including walls slightly for better visuals)
 						room_rect = pygame.Rect(
 							(room['x'] - 1) * TILE_SIZE,
@@ -177,7 +171,7 @@ class CameraGroup(pygame.sprite.Group):
 			self.fog_unexplored.blit(self.discovery_mask, (player.rect.centerx - self.discovery_radius, player.rect.centery - self.discovery_radius), special_flags=pygame.BLEND_RGBA_MIN)
 
 			# 2. Update dynamic flashlight (dim visited areas)
-			self.fog_dynamic.fill((0, 0, 0, DYNAMIC_FOG_ALPHA))
+			self.fog_dynamic.fill(TILE_SET_CONFIG[TILE_SET]['bg color'] + (DYNAMIC_FOG_ALPHA, ))
 			self.fog_dynamic.blit(self.light_mask, (player.rect.centerx - self.offset.x - self.light_radius, player.rect.centery - self.offset.y - self.light_radius), special_flags=pygame.BLEND_RGBA_MIN)
 
 	def custom_draw(self, player):

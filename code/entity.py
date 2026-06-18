@@ -1,81 +1,82 @@
 import pygame
+
 from settings import *
 
 
 class Entity(pygame.sprite.Sprite):
-    def __init__(self, pos, groups, grid):
-        super().__init__(groups)
-        
-        # Graphics setup
-        self.frame_index = 0
-        self.facing = 'Down'
-        self.status = 'Idle'
-        self.animations = {}
-        
-        # Movement attributes
-        self.direction = pygame.math.Vector2()
-        self.pos = pygame.math.Vector2(pos)
-        self.speed = PLAYER_SPEED
-        
-        # Collision
-        self.grid = grid
-        self.is_blocked = False
+	def __init__(self, pos, groups, grid):
+		super().__init__(groups)
 
-        self.z = Z_LAYER['main']
+		# Graphics setup
+		self.frame_index = 0
+		self.facing = 'Down'
+		self.status = 'Idle'
+		self.animations = {}
 
-    def _collision(self, direction):
-        start_col = max(0, int(self.hitbox.left // TILE_SIZE))
-        end_col = min(len(self.grid[0]), int(self.hitbox.right // TILE_SIZE) + 1)
-        start_row = max(0, int(self.hitbox.top // TILE_SIZE))
-        end_row = min(len(self.grid), int(self.hitbox.bottom // TILE_SIZE) + 1)
+		# Movement attributes
+		self.direction = pygame.math.Vector2()
+		self.pos = pygame.math.Vector2(pos)
+		self.speed = PLAYER_SPEED
 
-        for row_index in range(start_row, end_row):
-            for col_index in range(start_col, end_col):
-                if self.grid[row_index][col_index] == 1:
-                    x = col_index * TILE_SIZE
-                    y = row_index * TILE_SIZE
-                    tile_rect = pygame.Rect(x, y, TILE_SIZE, TILE_SIZE)
+		# Collision
+		self.grid = grid
+		self.is_blocked = False
 
-                    if self.hitbox.colliderect(tile_rect):
-                        if direction == 'horizontal':
-                            if self.direction.x > 0:  # Moving right
-                                self.hitbox.right = tile_rect.left
-                            if self.direction.x < 0:  # Moving left
-                                self.hitbox.left = tile_rect.right
-                            self.rect.centerx = self.hitbox.centerx
-                            self.pos.x = self.hitbox.centerx
+		self.z = Z_LAYER['main']
 
-                        if direction == 'vertical':
-                            if self.direction.y > 0:  # Moving down
-                                self.hitbox.bottom = tile_rect.top
-                            if self.direction.y < 0:  # Moving up
-                                self.hitbox.top = tile_rect.bottom
-                            self.rect.centery = self.hitbox.centery
-                            self.pos.y = self.hitbox.centery
+	def _collision(self, direction):
+		start_col = max(0, int(self.hitbox.left // TILE_SIZE))
+		end_col = min(len(self.grid[0]), int(self.hitbox.right // TILE_SIZE) + 1)
+		start_row = max(0, int(self.hitbox.top // TILE_SIZE))
+		end_row = min(len(self.grid), int(self.hitbox.bottom // TILE_SIZE) + 1)
 
-    def _move(self, dt):
-        # Normalizing vector
-        if self.direction.magnitude() > 0:
-            self.direction = self.direction.normalize()
+		for row_index in range(start_row, end_row):
+			for col_index in range(start_col, end_col):
+				if self.grid[row_index][col_index] == 1:
+					x = col_index * TILE_SIZE
+					y = row_index * TILE_SIZE
+					tile_rect = pygame.Rect(x, y, TILE_SIZE, TILE_SIZE)
 
-        # Save old position to check for blocking
-        old_pos = self.pos.copy()
+					if self.hitbox.colliderect(tile_rect):
+						if direction == 'horizontal':
+							if self.direction.x > 0:  # Moving right
+								self.hitbox.right = tile_rect.left
+							if self.direction.x < 0:  # Moving left
+								self.hitbox.left = tile_rect.right
+							self.rect.centerx = self.hitbox.centerx
+							self.pos.x = self.hitbox.centerx
 
-        # Horizontal movement
-        self.pos.x += self.direction.x * self.speed * dt
-        self.hitbox.centerx = round(self.pos.x)
-        self.rect.centerx = self.hitbox.centerx
-        self._collision('horizontal')
+						if direction == 'vertical':
+							if self.direction.y > 0:  # Moving down
+								self.hitbox.bottom = tile_rect.top
+							if self.direction.y < 0:  # Moving up
+								self.hitbox.top = tile_rect.bottom
+							self.rect.centery = self.hitbox.centery
+							self.pos.y = self.hitbox.centery
 
-        # Vertical movement
-        self.pos.y += self.direction.y * self.speed * dt
-        self.hitbox.centery = round(self.pos.y)
-        self.rect.centery = self.hitbox.centery
-        self._collision('vertical')
+	def _move(self, dt):
+		# Normalizing vector
+		if self.direction.magnitude() > 0:
+			self.direction = self.direction.normalize()
 
-        # Check if we are blocked (movement was negligible)
-        # Using a tiny epsilon to handle float precision
-        if (self.pos - old_pos).magnitude() < BLOCKED_THRESHOLD and self.direction.magnitude() > 0:
-            self.is_blocked = True
-        else:
-            self.is_blocked = False
+		# Save old position to check for blocking
+		old_pos = self.pos.copy()
+
+		# Horizontal movement
+		self.pos.x += self.direction.x * self.speed * dt
+		self.hitbox.centerx = round(self.pos.x)
+		self.rect.centerx = self.hitbox.centerx
+		self._collision('horizontal')
+
+		# Vertical movement
+		self.pos.y += self.direction.y * self.speed * dt
+		self.hitbox.centery = round(self.pos.y)
+		self.rect.centery = self.hitbox.centery
+		self._collision('vertical')
+
+		# Check if we are blocked (movement was negligible)
+		# Using a tiny epsilon to handle float precision
+		if (self.pos - old_pos).magnitude() < BLOCKED_THRESHOLD and self.direction.magnitude() > 0:
+			self.is_blocked = True
+		else:
+			self.is_blocked = False
