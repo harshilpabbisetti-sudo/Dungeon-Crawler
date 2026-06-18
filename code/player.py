@@ -61,10 +61,15 @@ class Player(Entity):
 		directions = ['Down', 'Up', 'Left', 'Right']
 		states = ['Idle', 'Run', 'Death']
 
+		player_config = PLAYER_SET_CONFIG[PLAYER_SET]
+		player_scale = player_config['scale']
+		player_size = player_config['size']
+
 		for direction in directions:
 			for state in states:
-				full_path = f'graphics/Player/{direction}_{state}.png'
-				self.animations[f'{direction}_{state}'] = load_and_scale_sprite_sheet(full_path, 64, 64, 2)
+				full_path = f'graphics/{PLAYER_SET}/{direction}_{state}.png'
+				self.animations[f'{direction}_{state}'] = load_and_scale_sprite_sheet(full_path, player_size, player_size, player_scale)
+
 
 	def _input(self, keys):
 		# hiding

@@ -10,6 +10,7 @@ from debug import *
 from hiding_obj import Hiding_Obj
 from timer import *
 from stopwatch import *
+import os
 
 Vector = pygame.math.Vector2
 
@@ -45,10 +46,22 @@ class Level:
 
 			# spawn monsters and sprites to hide into in other rooms
 			monster_types = ['wolf', 'goblin']
-			hideable_types = ['barrel', 'blue_chest', 'gold_chest']
+			
+			# Dynamically discover hideable types from the current TILE_SET
+			hiding_path = get_abs_path(f'graphics/{TILE_SET}/hiding')
+			
+			# Function to get subdirs
+			get_types = lambda p: [d for d in os.listdir(p) if os.path.isdir(os.path.join(p, d))] if os.path.exists(p) else []
+			
+			hideable_types = get_types(hiding_path)
+			
+			# Fallback to type1 if current theme has no hideables
+			if not hideable_types:
+				hideable_types = get_types(get_abs_path('graphics/type1/hiding'))
+
 			for room in self.dungeon.rooms[1:]:
 				# find valid border positions for hiding objects
-				if random.choice([True, False]):  # need hidables or not
+				if hideable_types and random.choice([True, False]):  # need hidables or not
 					hideable_type = random.choice(hideable_types)
 
 					for _ in range(2):
@@ -79,11 +92,11 @@ class Level:
 		self.clock = Clock()
 
 	def run(self, dt):
-		self.display_surface.fill('black')
+		self.display_surface.fill(TILE_SET_CONFIG[TILE_SET]['bg color'])
 		self.all_sprites.update(dt)
 
-		# Update fog based on mode (room_based=True reveals whole rooms)
-		self.all_sprites.update_fog(self.player, self.dungeon.rooms, room_based=True)
+		# # Update fog based on mode (room_based=True reveals whole rooms)
+		# self.all_sprites.update_fog(self.player, self.dungeon.rooms, room_based=True)
 
 		self.all_sprites.custom_draw(self.player)
 

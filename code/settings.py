@@ -53,3 +53,16 @@ Z_LAYER = {
 
 # UI
 CLOCK_POS = (SCREEN_WIDTH / 2, 30)
+
+# map
+TILE_SET = 'map2'  # Options: 'map1', 'map2'
+TILE_SET_CONFIG = {
+	'map1': {'scale': 2, 'bg color': (0, 0, 0)},
+	'map2': {'scale': 4, 'bg color': (89, 78, 63)}
+}
+# player
+PLAYER_SET = 'player2'  # Options: 'player1', 'player2'
+PLAYER_SET_CONFIG = {
+	'player1': {'scale': 2, 'size': 64},
+	'player2': {'scale': 3, 'size': 40}
+}
