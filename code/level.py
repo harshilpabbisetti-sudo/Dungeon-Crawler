@@ -45,7 +45,7 @@ class Level:
 			self.player = Player((spawn_x * TILE_SIZE, spawn_y * TILE_SIZE), self.all_sprites, self.dungeon, self.hideable_sprite, self)
 
 			# spawn monsters and sprites to hide into in other rooms
-			monster_types = ['wolf', 'goblin']
+			monster_types = Monster.get_types()
 			
 			# Dynamically discover hideable types from the current TILE_SET
 			hiding_path = get_abs_path(f'graphics/{TILE_SET}/hiding')
@@ -75,7 +75,7 @@ class Level:
 							Hiding_Obj(hideable_type, (pos[0] * TILE_SIZE, pos[1] * TILE_SIZE), [self.all_sprites, self.hideable_sprite])
 
 				# monsters
-				if random.choice([True, False]):
+				if random.choice([True]):
 					monster_type = random.choice(monster_types)
 					for _ in range(random.randint(2, 6)):
 						center_x, center_y = room['center']
@@ -212,7 +212,7 @@ class CameraGroup(pygame.sprite.Group):
 
 				# # analysis
 				# debug_values(player.key_timer.active, True)
-				# debug_rect(sprite, player, offset_rect)
+				debug_rect(sprite, player, offset_rect)
 
 		self.display_surface.blit(self.vision_surf, (0, 0))
 

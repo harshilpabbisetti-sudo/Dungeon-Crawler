@@ -158,6 +158,13 @@ class Monster(Entity):
     # Class-level cache for monster data
     data = None
 
+    @classmethod
+    def get_types(cls):
+        if cls.data is None:
+            with open(get_abs_path('code/monsters.json'), 'r') as f:
+                cls.data = json.load(f)
+        return list(cls.data.keys())
+
     def __init__(self, pos, group, grid, monster_type, static_edges, player, hideable_sprites):
         super().__init__(pos, group, grid)
 
@@ -232,11 +239,16 @@ class Monster(Entity):
         self.animations = {}
         directions = {'D': 'Down', 'U': 'Up', 'L': 'Left', 'R': 'Right'}
         states = self.monster_stats['states']
+        
+        # Calculate scale to reach a consistent size (assuming 96px is the target)
+        orig_size = self.monster_stats.get('original_size', 48)
+        scale = 96 / orig_size
+
         for prefix, direction in directions.items():
             for state in states:
                 full_path = f'graphics/Monsters/{self.monster_type}/{prefix}_{state}.png'
                 try:
-                    self.animations[f'{direction}_{state}'] = load_and_scale_sprite_sheet(full_path, 48, 48, 2)
+                    self.animations[f'{direction}_{state}'] = load_and_scale_sprite_sheet(full_path, orig_size, orig_size, scale)
                 except FileNotFoundError:
                     continue
 
