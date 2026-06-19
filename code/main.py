@@ -18,7 +18,6 @@ class Game:
 		game_icon = pygame.image.load(get_abs_path('graphics/icon.png'))
 		pygame.display.set_icon(game_icon)
 
-			
 		self.clock = pygame.time.Clock()
 		
 		# state management

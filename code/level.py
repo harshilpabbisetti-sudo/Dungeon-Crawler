@@ -8,6 +8,7 @@ from monster import Monster
 from player import Player
 from stopwatch import *
 from timer import *
+from debug import *
 
 Vector = pygame.math.Vector2
 
