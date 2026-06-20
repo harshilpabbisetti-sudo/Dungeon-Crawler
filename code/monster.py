@@ -230,7 +230,8 @@ class Monster(Entity):
                 self.state = 'ROAM'
                 self.timers['action'].activate()
         elif self.state == 'CHASE':
-            self._chase_player()
+            if not self.attacking:
+                self._chase_player()
 
         self._get_status()
         self._animate(dt)
@@ -301,6 +302,9 @@ class Monster(Entity):
                     player.hid = False
                     player.hidable_sprite.has_player = False
             if not player.hid:
+                if not self.attacking:
+                    self.frame_index = 0
+                    self.player.frame_index = 0
                 self.attacking = True
                 self.player.dying = True
                 self.timers['action'].deactivate()
@@ -351,7 +355,7 @@ class Monster(Entity):
             self._follow_path()
 
     def _get_status(self):
-        if self.attacking:
+        if self.attacking and f'{self.facing}_Attack' in self.animations:
             self.status = 'Attack'
         elif self.direction.magnitude() > 0:
             if abs(self.direction.x) >= abs(self.direction.y):
