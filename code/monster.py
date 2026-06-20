@@ -309,6 +309,8 @@ class Monster(Entity):
                 self.player.dying = True
                 self.timers['action'].deactivate()
                 self.direction = Vector()
+                self.z = Z_LAYER['upper']
+                self.player.z = Z_LAYER['upper']
 
     def _follow_path(self):
         if not self.path or self.path_index >= len(self.path):

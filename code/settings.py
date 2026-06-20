@@ -49,7 +49,8 @@ DYNAMIC_FOG_ALPHA = 180
 Z_LAYER = {
 	'floor': 0,
 	'sound/state': 1,
-	'main': 2
+	'main': 2,
+	'upper': 3
 }
 
 # UI
